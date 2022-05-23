@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper
+	namespace="com.it.groupware.electronicReLine.model.ElectronicReLineDAO">
+
+	<insert id="insertReLine" parameterType="ElectronicReLineDTO">
+		<selectKey keyProperty="receiveLineNo" resultType="int"
+			order="BEFORE">
+			select RELINE_SEQ.nextval from dual
+		</selectKey>
+		insert into RELINE
+		values (#{receiveLineNo}, #{electronicNo}, #{empNo},
+		#{receiveLineFlag})
+	</insert>
+	
+	<select id="selectByElectronicNo" parameterType="int" resultType="ElectronicReLineDTO">
+		select * from RELINE
+		where ELECTRONIC_NO = #{electronicNo}
+	</select>
+	
+	<select id="selectForCheckExist" parameterType="ElectronicReLineDTO" resultType="int">
+		select count(*) from RELINE
+		where ELECTRONIC_NO = #{electronicNo} and EMP_NO = #{empNo}
+	</select>
+	
+	
+	<update id="AcceptUpdateReLine" parameterType="ElectronicDTO">
+		update RELINE
+		set RECEIVE_LINE_FLAG = '1'
+		where ELECTRONIC_NO = #{electronicNo} AND EMP_NO = #{empNo}
+	</update>
+	
+	<delete id="deleteReLine" parameterType="ElectronicReLineDTO">
+		delete RELINE
+		where EMP_NO = #{empNo} and ELECTRONIC_NO = #{electronicNo}
+	</delete>
+
+</mapper>

@@ -1,0 +1,657 @@
+@charset "UTF-8";
+
+/* 메인 CSS */
+#mainBodyDiv{
+	width: 1200px;
+	display: flex;
+	flex-wrap: wrap;
+	margin: 0 auto;
+}
+
+.boardMainH{
+	color: #575757;
+	padding: 10px 0 0 24px;
+}
+
+#noticeView{
+	width: 1160px;
+	height: 427px;
+	margin: 20px;
+	color: #575757;
+   	background: white;
+	padding-bottom: 20px;
+   	border-radius: 15px;
+    box-shadow: 0px 2px 20px #d0d0d0;
+    position: sticky;
+}
+
+#noticeView > table{
+	clear: both;
+    width: 1100px;
+    margin: 0px 30px;
+    color: #575757;
+}
+
+#div2{
+	width:1200px;
+}
+
+#freeBoardView{
+	float: left;
+	width: 560px;
+	height: 427px;
+	margin: 20px;
+	color: #575757;
+   	background: white;
+	padding-bottom: 20px;
+   	border-radius: 15px;
+    box-shadow: 0px 2px 20px #d0d0d0;
+    position: sticky;
+}
+
+#freeBoardView > table{
+	clear: both;
+    width: 500px;
+    margin: 0px 30px;
+    color: #575757;
+}
+
+#ArchivesView{
+	float: left;
+	width: 560px;
+	height: 427px;
+	margin: 20px;
+	color: #575757;
+   	background: white;
+	padding-bottom: 20px;
+   	border-radius: 15px;
+    box-shadow: 0px 2px 20px #d0d0d0;
+    position: sticky;
+}
+
+#ArchivesView > table{
+	clear: both;
+    width: 500px;
+    margin: 0px 30px;
+    color: #575757;
+}
+
+.moreBtn{
+	float: right;
+    width: 70px;
+    height: 33px;
+    padding-top: 5px;
+    margin: 0px 30px 15px 0px;
+    border-radius: 5px;
+    text-align: center;
+    color: white;
+    background-color: rgb(70, 171, 196);
+    cursor: pointer;
+}
+
+.tdCenter{
+	text-align: center;
+}
+
+.commCnt2{
+	float: left;
+	margin-left: 5px;
+	color: rgb(255, 60, 0);
+	font-weight: bold;
+}
+/*리스트 CSS*/
+#listBodyDiv{
+	display: flex;
+	flex-wrap: wrap;
+    width: 1300px;
+    height: auto;
+    margin: 10px auto;
+	padding: 20px;
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0px 2px 20px #d0d0d0;
+    
+}
+.listTitle{
+	width: 500px;
+	margin: 20px 0 20px 40px;
+	font-weight: bold;
+	color: #575757;
+}
+
+#writeBtnDiv{
+	flex-direction: row-reverse;
+	float: right;
+    width: 70px;
+    height: 33px;
+    padding-top: 5px;
+    margin: 0px 20px 15px 0px;
+    border-radius: 5px;
+    text-align: center;
+    color: white;
+    background-color: rgb(70, 171, 196);
+    cursor: pointer;
+}
+#frmPage{
+	height: 0;	
+}
+
+#listBodyDiv > table{
+	clear: both;
+    width: 100%;
+    margin: 0 auto;
+    color: #575757;
+}
+
+#thStyle{
+	text-align: center;
+	height: 40px;	
+    border-top: 1px solid #a2a2a2;
+    border-bottom: 1px solid #a2a2a2;
+}
+
+#tdStyle{
+	height: 50px;
+    border-bottom: 1px solid #a2a2a2;
+}
+
+.userNameTd, .regdateTd, .readCountTd{
+    text-align: center;
+}
+
+.titleDiv{
+    padding: 5px 0px 5px 10px;
+}
+
+.newSpan{
+    padding: 1px 7px 2px 7px;
+    margin: 8px 0 5px 10px;
+    font-size: 12px;
+    text-align: center;
+    border-radius: 5px;
+    background-color: rgb(255, 60, 0);
+    color: white;
+}
+
+#pagingDiv{
+	margin: 20px auto;
+}
+
+#pagingNav{
+	margin: 0 auto;
+}
+
+#searchP{
+	float: left;
+	margin-left: 20px;
+}
+
+#searchDiv{
+	clear: both;
+	margin: 30px 0 15px 900px;
+}
+
+#searchCondition{
+	height: 27.5px;	
+}
+
+#searchTextBox{
+	width: 200px;
+	font-size: 15px;
+}
+
+#searchBtn{
+	border-radius: 5px;
+    color: #535353;
+	border: 1px solid #6e6e6e;
+}
+
+.titleA{
+	text-decoration: none;
+	color: #535353;
+}
+/* 등록, 수정 css*/
+
+.wrtieDiv{
+    width: 1000px;
+	padding: 20px;
+	margin: 0 auto;
+	margin-bottom: 20px;	
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0px 2px 20px #d0d0d0;
+
+}
+
+#boardSelect{
+    width: 750px;
+    height: 40px;
+    margin: 10px 0px 5px 40px;
+    padding-left: 10px;
+    border-radius: 5px;
+    font-size: 15px;
+}
+
+#writeTitle{
+    margin-left: 40px;
+    font-size: 20px;
+    font-weight: bold;
+}
+
+#title{
+    width: 70%;
+    margin-left: 20px;
+    margin-bottom: 20px;
+    border-radius: 5px;
+    border: thin solid black;
+    font-size: 20px;
+}
+
+#summernote{
+	color: black;
+}
+
+.input-group{
+    border-radius: 5px;
+    margin: 10px 0;
+   	width: 955px;
+    color: rgb(58, 58, 58);
+}
+
+#writeCancleBtn{
+	float: right;
+    width: 100px;
+    height: 35px;
+    padding-top: 6px;
+    margin-right: 55px;
+    border-radius: 5px;
+    text-align: center;
+    color: rgb(97, 97, 97);
+    background-color: rgb(196, 196, 196);
+    border: none;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+#submitUp{
+    float: right;
+    width: 100px;
+    height: 40px;
+    margin-right: 55px;
+    margin-top: 10px;
+    color: white;
+    background-color: rgb(70, 171, 196);
+    font-weight: bold;
+    border: none;
+    border-radius: 5px;
+    text-align: center;
+    cursor: pointer;
+}
+
+.boardMainH{
+	margin: 20px 0 0 20px;
+	font-weight: bold;
+}
+
+/* 상세보기 css*/
+#contentTaDetail{
+	width: 1150px;
+	font-size: 20px;
+	margin: 30px 5px;
+	padding: 0 15px;
+    background-color: white;
+    border: none;
+}
+
+.likeBtnChk1{
+	color: red;
+}
+
+#detailBodyDiv{
+    width: 1200px;
+    height: auto;
+    margin: 0 auto;
+    margin-bottom: 20px;
+   	background: white;
+   	border-radius: 15px;
+    box-shadow: 0px 2px 20px #d0d0d0;
+}
+
+#detailDiv > #titleDiv{
+    margin-top: 40px;
+    width: 1150px;
+    padding-top: 20px;
+    padding-left: 20px;
+    font-size: 25px;
+    font-weight: bold;
+}
+
+#detailDiv{
+	margin: 15px;
+}
+
+#likeDiv{
+	float: right;
+}
+
+#likeBtnChk1{
+	color: #0000ff;
+	width:30px;
+	background: none;
+	border: none;
+}
+
+#likeBtnChk2{
+	color: #c0c0c0;
+	width:30px;
+	background: none;
+	border: none;
+}
+
+#likeCnt{
+	font-size: 15px;	
+}
+
+#detialMenu{
+    float: right;
+    border: none;
+    background: none;
+    width: 30px;
+    height: 30px;
+    margin-top: 3px;
+    margin-left:10px;
+}
+
+#menuImg{
+	margin-bottom: 10px;
+}
+
+#userNameSpan{
+    font-size: 16px;
+    color: rgb(97, 97, 97);
+}
+
+#likeSpan{
+	float: right;
+    font-size: 14px;
+    margin-top: 10px;
+    font-weight: normal;
+	
+}
+
+#readcountSpan{
+    font-size: 14px;
+    margin-top: 3px;
+    font-weight: normal;
+}
+
+
+#upFile{
+	float: right;
+	color: white;
+	background: #36b9cc;
+	border: none;
+	border-radius: 3px;
+	margin: 0 20px 0 0;
+	font-size: 12px;
+	font-weight: bold;
+	width: 65px;	
+}
+#upFileList{
+	float: left;	
+	width: auto;
+	padding: 2px 0;
+}
+
+#upFileList > li {
+	width: auto;
+	font-size: 20px;	
+}
+
+.fileA{
+	font-size: 13px;
+}
+
+#borderDiv{
+    border: 1px solid black;
+    width: 1150px;
+    margin: 8px 5px;
+}
+
+#regdateSpan{
+	margin-left: 5px;
+	font-size:13px;
+    font-weight: normal;
+    margin: 15px 30px 0px 0px;
+}
+
+/* 댓글 css*/
+#commentBodyDiv{
+    width: 1190px;
+    padding: 20px;
+}
+
+.commCnt{
+	float: left;
+	width: 25px;
+	color: white;	
+	background: #36b9cc;
+	text-align: center;
+	font-weight: bold;
+	border-radius:50px;
+	margin-top: 5px;
+}
+
+#commentAdd{
+	clear: both;
+}
+
+.replyDivHr{
+	margin-top: 25px;
+}
+.commentDiv > hr{
+    margin-top: 30px;
+}
+
+.commentDiv > .regdateComm{
+    float: right;
+    margin-right: 10px;
+    margin-bottom: 15px;
+    font-size: 15px;
+}
+
+#replyAddDiv{
+	display: flex;
+	padding-top: 20px;
+}
+
+#replyAddDiv > .replyImg{
+	float: left;
+	margin: auto 20px;
+}
+
+.replyDiv{
+	display: flex;
+	margin-top: 20px;
+}
+
+.fa-reply{
+	transform: rotate(180deg);
+	color: #606060;	
+}
+
+.replyImg{
+	margin: auto 0;
+}
+
+.replyDiv > div{
+	width: 1100px;
+	padding-left: 20px;
+}
+
+.replyDiv > div > .userNameComm{
+	flex-wrap: wrap; 
+	width: 800px;
+}
+
+.replyDiv > div > .regdateReply{
+    float: right;
+    margin-right: 10px;
+    font-size: 15px;
+}
+
+.replyDiv > div > .contentComm{
+	width:1010px;	
+}
+
+#detialMenu2{
+    float: right;
+    border: none;
+    background: none;
+    width: 30px;
+    height: 24px;
+    margin-top: 3px;
+    margin-left:10px;
+}
+
+.commentTa{
+    font-size: 16px;
+    resize: none;
+}
+
+.userNameComm{
+	font-weight: bold;	
+	margin-left: 5px;
+}
+
+.contentComm{
+	font-size: 15px;
+	margin-top:7px;
+}
+
+#commentUp{
+    float: right;
+    width: 120px;
+    height: 80px;
+    border-radius: 10px;
+    text-align: center;
+    font-weight: bold;
+    font-size: 15px;
+}
+
+#replyUp{
+	float: right;
+    width: 120px;
+    height: 80px;
+    margin-left: 30px;
+    border-radius: 10px;
+    text-align: center;
+    font-weight: bold;
+    font-size: 15px;
+}
+.replyCancleBtn{
+	font-size: 15px;
+	margin-left: 10px; 
+	border-radius: 7px;
+	border: none;
+}
+
+.replyBtn{
+	font-size: 15px;
+	margin-left: 10px; 
+	border-radius: 7px;
+	border: none;
+}
+
+#menu{
+    float: right;
+}
+
+
+/* 관리자 - 게시판 관리 */
+#adminBoardFolDiv{
+	float: left;
+	width: 100%;
+	padding: 20px;
+	margin: 0 auto;
+	margin-bottom: 20px;	
+	padding-bottom: 40px;	
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0px 2px 20px #d0d0d0;
+}
+
+#adminBoardFolDiv > h3{
+	color: #3a3a3a;
+	font-weight: bold;
+	margin: 40px 0 0 40px;
+}
+
+#adminBoardTable{
+	float: left;
+	width: 40%;
+    color: #575757;
+    margin-left: 40px;
+}
+
+#noTd{
+	text-align: center;
+}
+
+.nameSpan > a{
+	color: black;
+}
+
+#adminInsert{
+	float: left;
+	width: 30%;
+	margin-left: 30px;
+	padding: 20px;
+	background: #d8e7ef;
+	border-radius: 5px;
+}
+
+#adminInsert > h5 {
+	text-align: center;
+	color: #3a3a3a;
+	font-weight: bold;
+	margin: 10px 0 40px 0;
+	padding: 10px;
+	background: white;
+	border-radius: 5px;
+}
+
+#adminInsert > form > #boardFolderName{
+	width: 85%;
+	height: 40px;	
+}
+
+#adminInsert > form > #plusBtn{
+	width: 10%;
+	height: 40px;
+	font-size:20px;
+	font-weight: bold;
+	margin-left: 10px;
+	border: none;
+	border-radius: 5px;
+	background: #0080ff;
+	color: white;
+}
+
+td > a > #xBoxBtn{
+	width: 35px;
+	height: 35px;
+	background: #f15f5a;
+	font-weight: bold;
+	color: white;
+	border: none;
+	border-radius: 3px;
+	padding: auto 0;
+	margin-right: 5px;
+}
+
+.adminEditBtn{
+	width: 40px;
+	background: #22cc77;
+	border: none;
+}

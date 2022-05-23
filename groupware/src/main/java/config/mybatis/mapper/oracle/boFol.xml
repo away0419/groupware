@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.it.groupware.boFol.model.BoFolDAO">
+	
+	<select id="selectAllBoFol" resultType="boFolDTO">
+		select * from BOFOL
+		order by BOOKING_FOLDER_NAME
+	</select>
+	<insert id="insertBoFol" parameterType="boFolDTO">
+		insert into BOFOL 
+		values(BOFOL_SEQ.nextval, #{bookingFolderName})
+	</insert>
+	<update id="updateBoFol" parameterType="boFolDTO">
+		update BOFOL set BOOKING_FOLDER_NAME  =#{bookingFolderName}
+		where BOOKING_FOLDER_NO = #{bookingFolderNo}
+	</update>
+	<delete id="deleteBoFol" parameterType="int">
+		delete from BOFOL 
+		where BOOKING_FOLDER_NO = #{bookingFolderNo}
+	</delete>
+ </mapper>
+
+
+
+
+
+
+
+
+

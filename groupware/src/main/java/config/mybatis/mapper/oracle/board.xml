@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.it.groupware.board.model.BoardDAO">
+	<sql id="searchWhere">
+		<if test="searchKeyword!=null and searchKeyword!=''">
+			AND ${searchCondition} like '%' || #{searchKeyword} || '%'
+		</if>
+	</sql>
+	
+	<sql id="rowNum">
+		<![CDATA[
+		AND ROWNUM <=5
+		]]>
+	</sql>
+	
+	<insert id="insertBoard" parameterType="BoardDTO">
+		<selectKey keyProperty="boardNo" resultType="int" order="BEFORE">
+			SELECT OFBOARD_SEQ.nextval FROM dual
+		</selectKey>
+		INSERT INTO ofboard(BOARD_NO, EMP_NO, BOARD_TITLE, BOARD_CONTENT, BOARD_WRITER, BOARD_FOLDER_NO)
+		VALUES(#{boardNo}, #{empNo}, #{boardTitle}, #{boardContent:CLOB}, #{boardWriter}, #{boardFolderNo})
+	</insert>
+	
+	<select id="selectBoard" parameterType="searchVo" resultType="BoardDTO">
+		SELECT *
+		FROM
+		(
+			SELECT rownum as RNUM,A.*
+			from
+			(
+				SELECT bo.*, (CURRENT_DATE - board_date)*24 as newImgTerm FROM ofboard bo
+				WHERE board_folder_no=#{boardFolderNo}
+				<include refid="searchWhere"></include>
+				ORDER BY board_no DESC
+			)A
+		)
+		<![CDATA[
+		where RNUM > #{firstRecordIndex} 
+		and RNUM <= #{firstRecordIndex} + #{recordCountPerPage}
+		]]>
+	</select>
+	
+	<select id="selectTotalRecord" parameterType="searchVo"
+		resultType="int">
+		select count(*) from ofboard
+		where board_folder_no = #{boardFolderNo}
+		<include refid="searchWhere"></include>
+	</select>
+	
+	<select id="selectBoardMain" parameterType="int" resultType="BoardDTO">
+		SELECT bo.*, (CURRENT_DATE - board_date)*24 as newImgTerm FROM ofboard bo
+		WHERE board_folder_no=#{boardFolderNo}
+		<include refid="rowNum"></include>
+		ORDER BY board_no desc
+	</select>
+	
+	<update id="updateReadCount" parameterType="int">
+		UPDATE ofboard
+		SET board_hits=board_hits+1
+		WHERE board_no=#{boardNo}
+	</update>
+	
+	<select id="selectByNo" parameterType="int" resultType="BoardDTO">
+		SELECT * FROM ofboard
+		WHERE board_no=#{boardNo}
+	</select>
+	
+	<update id="updateBoard" parameterType="BoardDTO">
+		UPDATE ofboard
+		SET board_title=#{boardTitle}, board_content=#{boardContent:CLOB}, board_date=CURRENT_DATE
+		WHERE board_no=#{boardNo}
+	</update>
+	
+	<delete id="deleteBoard" parameterType="int">
+		DELETE ofboard
+		WHERE board_no=#{boardNo}
+	</delete>
+	
+	<update id="updateCommentCnt" parameterType="int">
+		UPDATE ofboard
+		SET commentCnt=commentCnt+1
+		WHERE board_no=#{boardNo}
+	</update>
+	
+	<update id="updateLikeCntUp" parameterType="int">
+		UPDATE ofboard
+		SET LIKE_CNT=LIKE_CNT+1
+		WHERE board_no=#{boardNo}
+	</update>
+
+	<update id="updateLikeCntDown" parameterType="int">
+		UPDATE ofboard
+		SET LIKE_CNT=LIKE_CNT-1
+		WHERE board_no=#{boardNo}
+	</update>
+</mapper>
+
+
+
+
+
+
+
+
+

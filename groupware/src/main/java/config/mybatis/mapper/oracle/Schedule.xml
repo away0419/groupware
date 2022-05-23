@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.it.groupware.schedule.model.ScheduleDAO">
+	<resultMap id="cal_clob" type="scheduleDTO">
+		    <result property="scheduleNo" column="SCHEDULE_NO" />
+		    <result property="scheduleTitle" column="SCHEDULE_TITLE" />
+		    <result property="scheduleStart" column="SCHEDULE_START" />
+		    <result property="scheduleEnd" column="SCHEDULE_END" />
+		    <result property="scheduleAllday" column="SCHEDULE_ALLDAY" />
+		    <result property="scheduleColor" column="SCHEDULE_COLOR" />
+		    <result property="scheduleFolderNo" column="SCHEDULE_FOLDER_NO" />
+		    <result property="scheduleThemeNo" column="SCHEDULE_THEME_NO" />
+		    <result property="empNo" column="EMP_NO" />
+		    <result property="bookingTargetNo" column="BOOKING_TARGET_NO" />
+		    <result property="scheduleContent" column="SCHEDULE_CONTENT" jdbcType="CLOB" javaType="java.lang.String"/>
+	</resultMap>
+	
+	<insert id="insertSchedule" parameterType="scheduleDTO">
+		insert into calendar
+		values(schedule_seq.nextval, #{scheduleTitle}, #{scheduleStart}, #{scheduleEnd}, #{scheduleAllday},
+        #{scheduleColor:VARCHAR},#{scheduleFolderNo},#{scheduleThemeNo},#{empNo},#{bookingTargetNo},#{scheduleContent:CLOB})
+    </insert>
+	
+	<select id="selectAllScheduleByEmpNo" parameterType="int" resultMap="cal_clob">
+		select * from calendar
+		where EMP_NO=#{empNo} and SCHEDULE_THEME_NO=1
+	</select>
+	
+	<select id="selectScheduleByScheduleNo" parameterType="int" resultType="scheduleDTO">
+		select * from calendar
+		where SCHEDULE_NO=#{scheduleNo} and SCHEDULE_THEME_NO=1
+	</select>
+	
+	<select id="selectMaxScNoByEmpNo" parameterType="int" resultType="int">
+		select MAX(SCHEDULE_NO) from calendar
+		where EMP_NO=#{empNo}
+	</select>
+	
+	<select id="selectAllScheduleByScFolderNo" parameterType="int" resultMap="cal_clob">
+		select * from calendar
+		where SCHEDULE_FOLDER_NO=#{scheduleFolderNo} and SCHEDULE_THEME_NO=1
+	</select>
+	
+	<delete id="deleteScheduleByScFolderNo" parameterType="int">
+		delete from calendar
+		where SCHEDULE_FOLDER_NO=#{scheduleFolderNo} and SCHEDULE_THEME_NO=1
+	</delete>
+	
+	<delete id="deleteScheduleByScheduleNo" parameterType="int">
+		delete from calendar
+		where SCHEDULE_NO=#{scheduleNo}
+	</delete>
+	
+	
+	<update id="updateScheduleByScFolderNo" parameterType="scheduleDTO">
+		update calendar set SCHEDULE_COLOR=#{scheduleColor}
+		where SCHEDULE_FOLDER_NO=#{scheduleFolderNo} and SCHEDULE_THEME_NO=1
+	</update>
+	
+	
+	<select id="selectAllScheduleByBTNo" parameterType="int" resultMap="cal_clob">
+		select * from calendar
+		where BOOKING_TARGET_NO=#{bookingTargetNo} and SCHEDULE_THEME_NO=2
+	</select>
+	
+	<select id="selectAllScheduleByScThemeNo" parameterType="int" resultMap="cal_clob">
+		select * from calendar
+		where SCHEDULE_THEME_NO=#{scheduleThemeNo}
+	</select>
+	
+	<select id="selectCntScheduleByToday" parameterType="hashmap" resultType="int">
+		select count(*) from calendar
+		where EMP_NO=#{empNo} 
+		<![CDATA[ and #{nowDate} >= TRUNC(TO_DATE(SCHEDULE_START,'YYYY-MM-DD HH24:MI:SS')) 
+		and #{nowDate} < TRUNC(TO_DATE(SCHEDULE_END,'YYYY-MM-DD HH24:MI:SS')+1)
+		and TRUNC(#{nowDate}) != TRUNC(TO_DATE(SCHEDULE_END,'YYYY-MM-DD HH24:MI:SS'))
+		]]>
+	</select>
+	
+	<select id="selectCntScheduleByBookingday" parameterType="scheduleDTO" resultType="int">
+		select count(*) from calendar
+		where SCHEDULE_THEME_NO=2 AND BOOKING_TARGET_NO=#{bookingTargetNo} AND
+		<![CDATA[ (TO_DATE(#{scheduleStart},'YYYY-MM-DD HH24:MI') >= TO_DATE(SCHEDULE_START,'YYYY-MM-DD HH24:MI:SS') AND TO_DATE(#{scheduleStart},'YYYY-MM-DD HH24:MI') < TO_DATE(SCHEDULE_END,'YYYY-MM-DD HH24:MI:SS'))
+		OR (TO_DATE(#{scheduleEnd},'YYYY-MM-DD HH24:MI') > TO_DATE(SCHEDULE_START,'YYYY-MM-DD HH24:MI:SS') AND TO_DATE(#{scheduleEnd},'YYYY-MM-DD HH24:MI') <= TO_DATE(SCHEDULE_END,'YYYY-MM-DD HH24:MI:SS'))
+		OR (TO_DATE(#{scheduleStart},'YYYY-MM-DD HH24:MI') <= TO_DATE(SCHEDULE_START,'YYYY-MM-DD HH24:MI:SS') AND TO_DATE(#{scheduleEnd},'YYYY-MM-DD HH24:MI') >= TO_DATE(SCHEDULE_END,'YYYY-MM-DD HH24:MI:SS'))
+		]]>
+	</select>
+	
+	
+ </mapper>
+
+
+
+
+
+
+
+
+

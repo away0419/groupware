@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.it.groupware.boardFol.model.BoardFolDAO">
+	<insert id="insertBoardFol" parameterType="BoardDTO">
+		<selectKey keyProperty="boardFolderNo" resultType="int" order="BEFORE">
+			SELECT OFBOARDFOL_SEQ.nextval FROM dual 
+		</selectKey>
+		insert into ofboardfol(BOARD_FOLDER_NO, BOARD_FOLDER_NAME)
+		values(#{boardFolderNo}, #{boardFolderName})
+	</insert>
+	
+	<select id="selectBoardFol" resultType="boardFolDTO">
+		SELECT * FROM ofboardfol
+		ORDER BY BOARD_FOLDER_NO
+	</select>
+	
+	<update id="updateBoardFol" parameterType="boardFolDTO">
+		UPDATE ofboardfol
+		SET BOARD_FOLDER_NAME = #{boardFolderName}
+		WHERE BOARD_FOLDER_NO = #{boardFolderNo}
+	</update>
+	
+	<delete id="deleteBoardFol" parameterType="int">
+		DELETE ofboardfol
+		WHERE BOARD_FOLDER_NO=#{boardFolderNo}
+	</delete>
+	
+	<select id="selectByNo" parameterType="int" resultType="boardFolDTO">
+		SELECT * FROM ofboardfol
+		WHERE board_folder_no=#{boardFolderNo}
+	</select>
+	
+	<select id="otherFolder" resultType="boardFolDTO">
+		SELECT * FROM ofboardfol
+		WHERE board_folder_no > 4
+	</select>
+</mapper>
+
+
+
+
+
+
+
+
+

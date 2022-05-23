@@ -1,0 +1,130 @@
+@charset "EUC-KR";
+
+.fc-button-primary{
+  background:#1AAB8A;
+  color:#fff;
+  border:none;
+  position:relative;
+  cursor:pointer;
+  transition:800ms ease all;
+  outline:none;
+}
+.fc-button-primary:hover{
+  background:#fff;
+  color:#1AAB8A;
+}
+.fc-button-primary:before,.fc-button-primary:after{
+  content:'';
+  position:absolute;
+  top:0;
+  right:0;
+  height:2px;
+  width:0;
+  background: #1AAB8A;
+  transition:400ms ease all;
+}
+.fc-button-primary:after{
+  right:inherit;
+  top:inherit;
+  left:0;
+  bottom:0;
+}
+.fc-button-primary:hover:before,.fc-button-primary:hover:after{
+  width:100%;
+  transition:800ms ease all;
+}
+
+#calendar {
+	max-width: 1250px;
+	max-height:720px;
+	margin: 0 auto;
+}
+
+.modal-dialog{
+	max-width: 700px;
+}
+.scFolderText{
+	width: 580px;
+}
+
+.selectTime{
+	width: 70px;
+	height: 30px;
+	text-align-last: center;
+}
+.labelTime{
+	width: 80px;
+}
+.labelTime2{
+	width: 84px;
+}
+.labelTime3{
+	width: 84px;
+}
+.labelTime4{
+	float: left;
+	display: inline-block;
+}
+.contentDiv{
+	float: left;
+	display: inline-block;
+}
+.chk-span{
+	font-size: 15px;
+}
+.schFol{
+	height: 27px;
+}
+
+.txLabel{
+	position: absolute;
+	
+}
+.addTitle{
+	width: 89%;
+	
+}
+#addtitle{
+	width:79%;
+}
+
+.txSch{
+	margin-left: 134px;
+	width: 89%;
+	min-width: 50%;
+}
+.afbtdiv{
+	margin: 0;
+	margin-top : 20px;
+	width: 100%;
+	text-align: center;
+}
+.fc-daygrid-day-number {
+	color:black;
+}
+.fc-col-header-cell-cushion{
+	color: black;
+}
+
+.fc-col-header > tbody> tr > th:nth-child(1) .fc-col-header-cell-cushion{
+	color:red;
+}
+.fc-daygrid .fc-col-header > tbody> tr > th:nth-child(7) .fc-col-header-cell-cushion{
+	color:blue;
+}
+.fc-scrollgrid-sync-table > tbody> tr > td:nth-child(1) .fc-daygrid-day-number{
+	color:red;
+}
+.fc-scrollgrid-sync-table > tbody> tr > td:nth-child(7) .fc-daygrid-day-number{
+	color:blue;
+}
+
+.consDiv{
+	background-color: white;
+	border-radius: .35rem!important;
+	margin-bottom: 10px;
+}
+.head-div{
+	max-width: 78%;
+	margin: 0 auto;
+}

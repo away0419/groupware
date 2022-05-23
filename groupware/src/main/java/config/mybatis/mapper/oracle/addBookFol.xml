@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.it.groupware.addBookFol.model.AddBookFolDAO">
+	<insert id="insertFol" parameterType="addBookFolDTO">
+		<selectKey keyProperty="addressFolderNo" resultType="int" order="BEFORE">
+			SELECT ADDFOL_SEQ.nextval FROM dual
+		</selectKey>
+		INSERT INTO addfol(ADDRESS_FOLDER_NO, EMP_NO, ADDRESS_FOLDER_NAME)
+		VALUES(#{addressFolderNo}, #{empNo}, #{addressFolderName})
+	</insert>
+	
+	<select id="selectFol" parameterType="int" resultType="addBookFolDTO">
+		SELECT * FROM addfol
+		WHERE EMP_NO=#{empNo}
+	</select>
+	
+	<select id="selectByFolNo" parameterType="int" resultType="addBookFolDTO">
+		SELECT * FROM addfol
+		WHERE ADDRESS_FOLDER_NO=#{addressFolderNo}
+	</select>
+	
+	<update id="updateFol" parameterType="addBookFolDTO">
+		UPDATE addfol
+		SET ADDRESS_FOLDER_NAME=#{addressFolderName}
+		WHERE ADDRESS_FOLDER_NO=#{addressFolderNo} AND EMP_NO=#{empNo}
+	</update>
+	
+	<delete id="deleteFol" parameterType="int">
+		DELETE addfol
+		WHERE ADDRESS_FOLDER_NO=#{addressFolderNo}
+	</delete>
+</mapper>
+
+
+
+
+
+
+
+
+
