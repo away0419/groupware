@@ -19,10 +19,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -83,44 +87,18 @@ public class BoardController {
 		return new ResponseEntity<Map<String,Object>>(data, HttpStatus.OK);
 	}
 	
+	@Transactional
 	@PostMapping
 	@ApiOperation(value = "게시글 등록")
-	public ResponseEntity<String> writeBoard(@RequestBody BoardDTO dto, @RequestBody BoardFileDTO fileVo,
+	public ResponseEntity<String> write(@RequestBody BoardDTO dto, @RequestBody BoardFileDTO fileDto,
 			List<MultipartFile> fileList) {
 		logger.info("게시판 등록 처리, 파라미터 vo={}", dto);
 		
 		/* 글등록 처리 */
-		int cnt=boardService.insertBoard(dto);
-		logger.info("게시판 등록 결과, cnt={}", cnt);
+		boardService.insertBoard(dto);
 		
 		/* 파일 업로드 처리*/
-		String fileName="", originalFileName="";
-		long fileSize=0;
-		
-		for(MultipartFile mf : fileList) {
-			if(mf.getOriginalFilename() != "") {
-				originalFileName = mf.getOriginalFilename();
-				fileSize = mf.getSize();
-				fileName = FileUploadUtil.getUniqueFileName(mf.getOriginalFilename());
-				
-				try {
-					mf.transferTo(new File(ConstUtil.BOARD_UPLOAD_PATH_TEST+"\\"+fileName));
-				} catch (IllegalStateException | IOException e) {
-					e.printStackTrace();
-				}
-				
-				logger.info("파일 업로드 성공, fileName={}, originalFileName={}, fileSize={}", fileName, originalFileName, fileSize);
-				fileVo.setBoardNo(dto.getBoardNo());
-				fileVo.setFileName(fileName);
-				fileVo.setOriginalFileName(originalFileName);
-				fileVo.setFileSize(fileSize);
-				logger.info("fileVo={}", fileVo);
-				
-				int file = boardFileService.insertFile(fileVo);
-				logger.info("file={}", file);
-			}//if
-		}//for
-
+		boardFileService.insertFileAll(fileList, fileDto, dto.getBoardNo());
 		
 		return new ResponseEntity<String>(ConstUtil.SUCCESS, HttpStatus.OK);
 	}
@@ -152,8 +130,8 @@ public class BoardController {
 		List<BoardFolDTO> otherFolder=boardFolService.otherFolder();
 		
 		//2
-		List<BoardDTO> list = boardService.selectBoard(searchVo);
-		logger.info("게시판 목록 조회, list.size={}", list.size());
+		List<BoardDTO> boardList = boardService.selectBoard(searchVo);
+		logger.info("게시판 목록 조회, list.size={}", boardList.size());
 		
 		int totalRecord = boardService.selectTotalRecord(searchVo);
 	    logger.info("totalRecord="+totalRecord);
@@ -161,70 +139,45 @@ public class BoardController {
 	    
 	    //3
 		data.put("boFol", boFol);
-		data.put("list", list);
+		data.put("list", boardList);
 		data.put("otherFolder", otherFolder);
 		data.put("pagingInfo", pagingInfo);
-		data.put("navNo", 6);
 
 		return new ResponseEntity<Map<String, Object>>(data, HttpStatus.OK);
 	}
 	
-	/*        게시글 상세보기        */
-	@RequestMapping("/countUpdate")
-	public String hitsUpdate(@RequestParam(defaultValue = "0")int boardNo, Model model) {
-		logger.info("조회수 증가, 파라미터 boardNo={}", boardNo);
-		
-		if(boardNo==0) {
-			model.addAttribute("msg", "잘못된 url 입니다.");
-			model.addAttribute("url", "/board/boardMain");
-			
-			return "common/message";
-		}
-		
-		int cnt = boardService.updateReadCount(boardNo);
-		logger.info("조회수 증가 처리, cnt={}", cnt);
-		
-		return "redirect:/board/boardDetail?boardNo="+boardNo;
-	}
-	
-	@RequestMapping("/boardDetail")
-	public String detail(@RequestParam(defaultValue = "0")int boardNo,
-			HttpServletRequest request , HttpSession session, Model model) {
+	@GetMapping("/{boardNo}")
+	@ApiOperation(value ="게시글 조회")
+	public ResponseEntity<Map<String, Object>> detail(@PathVariable int boardNo, int empNo) {
 		logger.info("게시판 상세보기 페이지, 파라미터 boardNo={}", boardNo);
-		int empNo = Integer.parseInt((String)session.getAttribute("empNo"));
-		
-		BoardDTO vo = boardService.selectByNo(boardNo);
-		logger.info("글 상세보기 조회, vo={}", vo);
-		
-		List<BoardFileDTO> fileVo = boardFileService.selectByNo(boardNo);
-		logger.info("fileVo={}", fileVo);
-		
+		Map<String,Object> data = new HashMap<>();
+		BoardDTO dto = boardService.selectByNo(boardNo);
+		List<BoardFileDTO> fileList = boardFileService.selectByNo(boardNo);
 		List<BoardCommentDTO> commList = boardCommentService.selectByNo(boardNo);
-		logger.info("댓글 목록 조회, commList={}", commList);
 		
-		BoardLikeDTO likeVo = new BoardLikeDTO();
-		likeVo.setBoardNo(boardNo);
-		likeVo.setEmpNo(empNo);
-		int selectByEmpNo = boardLikeService.selectByEmpNo(likeVo);
+		BoardLikeDTO likeDto = new BoardLikeDTO();
+		likeDto.setBoardNo(boardNo);
+		likeDto.setEmpNo(empNo);
 		
+		int selectByEmpNo = boardLikeService.selectByEmpNo(likeDto);
 		int likeCnt = boardLikeService.selectLike(boardNo);
 
 		/* top 게시판 폴더 list 처리 */
 		List<BoardFolDTO> otherFolder=boardFolService.otherFolder();
 		
-		model.addAttribute("vo", vo);
-		model.addAttribute("fileVo", fileVo);
-		model.addAttribute("commList", commList);
-		model.addAttribute("otherFolder", otherFolder);
-		model.addAttribute("selectByEmpNo", selectByEmpNo);
-		model.addAttribute("likeCnt", likeCnt);
-		model.addAttribute("navNo",6);
+		data.put("boardDto", dto);
+		data.put("fileList", fileList);
+		data.put("commList", commList);
+		data.put("otherFolder", otherFolder);
+		data.put("selectByEmpNo", selectByEmpNo);
+		data.put("likeCnt", likeCnt);
 
-		return "board/boardDetail";
+		return new ResponseEntity<Map<String, Object>>(data, HttpStatus.OK);
 	}
 	
-	/* 상세보기 다운로드 처리 */
-	@RequestMapping("/download")
+	/* 파일 다운로드 처리 */
+	@GetMapping("/download")
+	@ApiOperation(value="파일 다운로드")
 	public void download(@RequestParam(defaultValue = "0")int boardFileNo,
 			HttpServletResponse response) throws Exception {
 		//1
@@ -259,121 +212,42 @@ public class BoardController {
 	}
 
 
-	/*        게시글 수정        */
-	@RequestMapping("/boardEdit")
-	public String eidt(@RequestParam(defaultValue = "0")int boardNo, Model model) {
-		logger.info("게시판 글 수정 페이지");
-		
-		/* 게시판 폴더 처리 */
-		List<BoardFolDTO> boFol = boardFolService.selectBoardFol();
-		logger.info("게시판 폴더 조회, boFol.size={}", boFol.size());
-		
-		/* 수정페이지 값 받아오기 */
-		BoardDTO vo = boardService.selectByNo(boardNo);
-		
-		/* top 게시판 폴더 list 처리 */
-		List<BoardFolDTO> otherFolder=boardFolService.otherFolder();
-		
-		/* 파일리스트 가져오기 */
-		List<BoardFileDTO> fileList = boardFileService.selectByNo(boardNo);
-		
-		model.addAttribute("boFol", boFol);
-		model.addAttribute("vo", vo);
-		model.addAttribute("otherFolder", otherFolder);
-		model.addAttribute("fileList", fileList);
-		model.addAttribute("navNo",6);
-
-		return "board/boardEdit";
-	}
-	
-	@PostMapping("/boardEdit")
-	public String edit_post(@RequestParam(defaultValue = "0")int boardNo, @ModelAttribute BoardDTO vo, @ModelAttribute BoardFileDTO fileVo, 
-			MultipartHttpServletRequest request, Model model) {
-		logger.info("게시판 글 수정 처리, 파라미터 vo={}", vo);
+	@Transactional
+	@PutMapping("/{boardNo}")
+	@ApiOperation(value="게시판 수정")
+	public ResponseEntity<String> update(@PathVariable int boardNo, @RequestBody BoardDTO boardDto, @RequestBody BoardFileDTO fileDto, 
+			List<MultipartFile> fileList) {
 		
 		/* 파일 업로드 처리*/
-		String fileName="", originalFileName="";
-		long fileSize=0;
+		boardFileService.insertFileAll(fileList, fileDto, boardNo);
+		boardService.updateBoard(boardDto);
 		
-		List<MultipartFile> fileList = request.getFiles("upfile");
-		logger.info("fileList={}", fileList);
-		for(MultipartFile mf : fileList) {
-			if(mf.getOriginalFilename() != "") {
-				originalFileName = mf.getOriginalFilename();
-				fileSize = mf.getSize();
-				fileName = FileUploadUtil.getUniqueFileName(mf.getOriginalFilename());
-				
-				try {
-					mf.transferTo(new File(ConstUtil.BOARD_UPLOAD_PATH_TEST+"\\"+fileName));
-				} catch (IllegalStateException | IOException e) {
-					e.printStackTrace();
-				}
-				
-				logger.info("파일 업로드 성공, fileName={}, originalFileName={}, fileSize={}", fileName, originalFileName, fileSize);
-				fileVo.setBoardNo(vo.getBoardNo());
-				fileVo.setFileName(fileName);
-				fileVo.setOriginalFileName(originalFileName);
-				fileVo.setFileSize(fileSize);
-				logger.info("fileVo={}", fileVo);
-				
-				int file = boardFileService.insertFile(fileVo);
-				logger.info("file={}", file);
-			}//if
-		}//for
-
-		int cnt = boardService.updateBoard(vo);
-		logger.info("게시판 글 수정 처리 결과, cnt={}", cnt);
-		
-		if(cnt<0) {
-			String msg="글 수정 처리를 실패하였습니다.";
-			String url="/board/boardDetail?boardNo="+vo.getBoardNo();
-
-			model.addAttribute("msg", msg);
-			model.addAttribute("url", url);
-			
-			return "common/message";
-		}
-		
-		return "redirect:/board/boardDetail?boardNo=" + vo.getBoardNo();
+		return new ResponseEntity<String>(ConstUtil.SUCCESS, HttpStatus.OK);
 	}
 	
-	/*        게시글 삭제        */
-	@RequestMapping("/boardDelete")
-	public String delete(@RequestParam(defaultValue = "0")int boardNo,
-						 @RequestParam(defaultValue = "0")int boardFolderNo,
-						 Model model) {
-		logger.info("게시판 글 삭제 처리");
+	@Transactional
+	@DeleteMapping("/{boardNo}")
+	@ApiOperation(value="게시글 삭제")
+	public ResponseEntity<String> delete(@PathVariable int boardNo, List<String> fileList) {
+		logger.info("게시글 삭제 처리");
 		
-		int cnt = boardService.deleteBoard(boardNo);
-		logger.info("게시판 글 삭제 결과, cnt={}", cnt);
-		
-		String msg="글 삭제 처리를 실패하였습니다.", url="/board/boardDetail?boardNo="+boardNo;
-		if(cnt>0) {
-			msg="글 삭제 처리를 완료하였습니다.";
-			url="/board/boardList?boardFolderNo="+boardFolderNo;
+		for(String str: fileList) {
+			int boardFileNo = Integer.parseInt(str);
+			boardFileService.deleteFile(boardFileNo);
 		}
 		
-		model.addAttribute("msg", msg);
-		model.addAttribute("url", url);
+		boardService.deleteBoard(boardNo);
 		
-		return "common/message";
+		return new ResponseEntity<String>(ConstUtil.SUCCESS, HttpStatus.OK);
 	}
 	
-	/* 기존파일 삭제 */
-	@ResponseBody
-	@RequestMapping(value="/boardFileDel", produces = "application/json;charset=UTF-8")
-	public int deleteFile(@RequestParam(value="checkBoxArr[]") List<String> checkBoxArr, @ModelAttribute BoardFileDTO vo) {
-		logger.info("checkBoxArr={}",checkBoxArr);
-		int result=0;
-		String checkNum="";
+	/* 선택 파일 삭제 */
+	@DeleteMapping(value="/boardFileDel")
+	@ApiOperation(value="게시판 첨부 파일 선택 삭제")
+	public ResponseEntity<String> deleteFile(int boardFileNo) {
+		boardFileService.deleteFile(boardFileNo);
 		
-		for(String str: checkBoxArr) {
-			checkNum=str;
-			vo.setBoardFileNo(Integer.parseInt(checkNum));
-			result=boardFileService.deleteFile(vo);
-		}
-		
-		return result;
+		return new ResponseEntity<String>(ConstUtil.SUCCESS,HttpStatus.OK);
 	}
 	
 }

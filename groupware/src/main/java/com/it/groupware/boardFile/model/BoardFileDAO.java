@@ -9,5 +9,5 @@ public interface BoardFileDAO {
 	int insertFile(BoardFileDTO fileVo);
 	List<BoardFileDTO> selectByNo(int boardNo);
 	BoardFileDTO selectByFileNo(int boardFileNo);
-	int deleteFile(BoardFileDTO fileVo);
+	int deleteFile(int boardFileNo);
 }

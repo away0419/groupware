@@ -3,6 +3,7 @@ package com.it.groupware.board.model;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.it.groupware.common.SearchVO;
 
@@ -38,8 +39,10 @@ public class BoardServiceImpl implements BoardService{
 		return boardDao.updateReadCount(boardNo);
 	}
 
+	@Transactional
 	@Override
 	public BoardDTO selectByNo(int boardNo) {
+		boardDao.updateReadCount(boardNo);
 		return boardDao.selectByNo(boardNo);
 	}
 

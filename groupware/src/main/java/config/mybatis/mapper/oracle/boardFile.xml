@@ -21,7 +21,7 @@
 		WHERE BOARD_FILE_NO=#{boardFileNo}
 	</select>
 	
-	<delete id="deleteFile" parameterType="boardFileDTO">
+	<delete id="deleteFile" parameterType="int">
 		DELETE ofboardfile
 		WHERE BOARD_FILE_NO=#{boardFileNo}
 	</delete>
