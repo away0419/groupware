@@ -32,26 +32,26 @@ public class EmpServiceImpl implements EmpService{
 	}
 
 	@Override
-	public int loginProc(int empNo, String empPwd) {
+	public Map<String, Object> login(int empNo, String empPwd) {
+		Map<String, Object> data = new HashMap<String, Object>();
+		boolean result = true;
+		EmpDTO dto = null;
 		String dbPwd = empDao.selectPwd(empNo);
 		
-		int result = 0;
 		logger.info("비번 {}",dbPwd);
 		logger.info("입력비번 {}",empPwd);
 		logger.info("입력비번 {}",passwordEncoder.encode(empPwd));
 		
-		if(dbPwd==null || dbPwd.isEmpty()) {
-			result =ID_NONE;
+		if(dbPwd==null || dbPwd.isEmpty() || !passwordEncoder.matches(empPwd, dbPwd)) {
+			result = false;
 		}else {
-			if(passwordEncoder.matches(empPwd, dbPwd)) {
-				result = LOGIN_OK;
-			}else {
-				result = PWD_DISAGREE;
-			}
-			
+			dto = empDao.selectByEmpNo(empNo);
 		}
 		
-		return result;
+		data.put("result", result);
+		data.put("empDto", dto);
+		
+		return data;
 	}
 
 	@Override

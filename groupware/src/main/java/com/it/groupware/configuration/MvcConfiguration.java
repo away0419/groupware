@@ -3,6 +3,7 @@ package com.it.groupware.configuration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.multipart.commons.CommonsMultipartResolver;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -41,6 +42,21 @@ public class MvcConfiguration implements WebMvcConfigurer{
 		multipartResolver.setDefaultEncoding("UTF-8"); // 파일 인코딩 설정
 		multipartResolver.setMaxUploadSizePerFile(50 * 1024 * 1024); // 파일당 업로드 크기 제한 (50MB)
 		return multipartResolver;
+	}
+	
+	@Override
+	public void addCorsMappings(CorsRegistry registry) {
+//		default 설정.
+//		Allow all origins.
+//		Allow "simple" methods GET, HEAD and POST.
+//		Allow all headers.
+//		Set max age to 1800 seconds (30 minutes).
+		registry.addMapping("/**")
+			.allowedOrigins("*")
+//			.allowedOrigins("http://localhost:8080", "http://localhost:8081")
+			.allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+//			.allowedHeaders("*")
+			.maxAge(6000);
 	}
 	
 }

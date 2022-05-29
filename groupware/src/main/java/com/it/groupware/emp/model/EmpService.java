@@ -18,7 +18,7 @@ public interface EmpService {
 	int EMP=3;
 	
 	int insertEmp(EmpDTO vo);
-	int loginProc(int empNo, String empPwd);
+	Map<String, Object> login(int empNo, String empPwd);
 	EmpDTO selectByEmpNo(int empNo);
 	List<EmpDTO> selectAllEmp();
 	List<EmpDTO> selectAllEmpList(SearchVO searchVo);
