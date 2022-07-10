@@ -11,15 +11,6 @@ import lombok.RequiredArgsConstructor;
 public class ElectronicFileServiceImpl implements ElectronicFileService{
 	private final ElectronicFileDAO electronicFileDao;
 
-	@Override
-	public int insertFile(ElectronicFileDTO vo) {
-		return electronicFileDao.insertFile(vo);
-	}
-
-	@Override
-	public List<ElectronicFileDTO> selectFileByEleNo(int electronicNo) {
-		return electronicFileDao.selectFileByEleNo(electronicNo);
-	}
 
 	@Override
 	public ElectronicFileDTO selectFileByFileNo(int fileNo) {
@@ -30,6 +21,17 @@ public class ElectronicFileServiceImpl implements ElectronicFileService{
 	public int deleteFile(int electronicNo) {
 		return electronicFileDao.deleteFile(electronicNo);
 	}
+
+	//파일 등록
+	@Override
+	public int insertFile(ElectronicFileDTO dto) {
+		return electronicFileDao.insertFile(dto);
+	}
 	
+	//해당 문서 파일 목록
+	@Override
+	public List<ElectronicFileDTO> selectFileByEleNo(int electronicNo) {
+		return electronicFileDao.selectFileByEleNo(electronicNo);
+	}
 	
 }

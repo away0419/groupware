@@ -13,9 +13,16 @@ import lombok.RequiredArgsConstructor;
 public class ElectronicReLineServiceImpl implements ElectronicReLineService{
 	private final ElectronicReLineDAO electronicReLineDao;
 
+	// 수신 라인 추가
 	@Override
-	public int insertReLine(ElectronicReLineDTO vo) {
-		return electronicReLineDao.insertReLine(vo);
+	public int insertReLine(ElectronicReLineDTO dto) {
+		return electronicReLineDao.insertReLine(dto);
+	}
+	
+	//수신자 확인
+	@Override
+	public int selectForCheckExist(int electronicNo, int empNo) {
+		return electronicReLineDao.selectForCheckExist(electronicNo, empNo);
 	}
 
 	@Override
@@ -33,9 +40,5 @@ public class ElectronicReLineServiceImpl implements ElectronicReLineService{
 		return electronicReLineDao.deleteReLine(vo);
 	}
 
-	@Override
-	public int selectForCheckExist(ElectronicReLineDTO vo) {
-		return electronicReLineDao.selectForCheckExist(vo);
-	}
 
 }

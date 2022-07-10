@@ -2,39 +2,70 @@ package com.it.groupware.electronic.controller;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.URL;
 import java.net.URLEncoder;
 import java.net.http.HttpResponse;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
+import org.apache.commons.collections4.map.HashedMap;
+import org.apache.commons.io.IOUtils;
+import org.apache.poi.poifs.property.Child;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.ResourceLoader;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestAttribute;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.multipart.MultipartHttpServletRequest;
 
 import com.it.groupware.boardFile.model.BoardFileDTO;
 import com.it.groupware.common.ConstUtil;
+import com.it.groupware.common.CustomErrorCode;
+import com.it.groupware.common.CustomException;
+import com.it.groupware.common.DataNameTransform;
 import com.it.groupware.common.FileUploadUtil;
+import com.it.groupware.common.ImageTranseform;
 import com.it.groupware.common.PaginationInfo;
 import com.it.groupware.common.SearchVO;
 import com.it.groupware.department.model.DepartmentDTO;
 import com.it.groupware.department.model.DepartmentService;
 import com.it.groupware.electronic.model.ElectronicDTO;
+import com.it.groupware.electronic.model.ElectronicRecentlyDTO;
 import com.it.groupware.electronic.model.ElectronicService;
 import com.it.groupware.electronicAppLine.model.ElectronicAppLineDTO;
 import com.it.groupware.electronicAppLine.model.ElectronicAppLineService;
@@ -56,13 +87,19 @@ import com.it.groupware.index.model.OriVo;
 import com.it.groupware.position.model.PositionDTO;
 import com.it.groupware.position.model.PositionService;
 
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
 import lombok.RequiredArgsConstructor;
+import net.bytebuddy.description.modifier.EnumerationState;
 
-@Controller
+@RestController
 @RequestMapping("/electronic")
 @RequiredArgsConstructor
+@Api(tags = "결재")
 public class ElectronicController {
 	private static final Logger logger = LoggerFactory.getLogger(ElectronicController.class);
+	private final ServletContext servletContext;
+	private final ImageTranseform itf;
 	private final ElectronicDocFolService electronicDocFolService;
 	private final ElectronicDocStyService electronicDocStyService;
 	private final EmpService empService;
@@ -75,739 +112,640 @@ public class ElectronicController {
 	private final PositionService positionService;
 	private final EmailService emailService;
 
-	// 전자결재 메인 보여주기
-	@GetMapping("/electronicMain")
-	public String electronicMain(HttpSession session, Model model) {
-
-		String empNo = (String) session.getAttribute("empNo");
-		logger.info("결재 리스트 보여주기 파라미터 empNo={}", empNo);
-		SearchVO searchVo = new SearchVO();
-		searchVo.setEmpNo(empNo);
-
-		logger.info("SearchVO searchVo={}", searchVo);
-
-		/* 페이징 처리 */
-		PaginationInfo pagingInfo = new PaginationInfo();
-		pagingInfo.setCurrentPage(searchVo.getCurrentPage());
-		pagingInfo.setBlockSize(ConstUtil.BLOCK_SIZE_ELE);
-		pagingInfo.setRecordCountPerPage(ConstUtil.RECORD_COUNT_ELE);
-
-		searchVo.setFirstRecordIndex(pagingInfo.getFirstRecordIndex());
-		searchVo.setRecordCountPerPage(ConstUtil.RECORD_COUNT_ELE);
-		searchVo.setEmpNo(empNo);
-
-		List<Map<String, Object>> ListAp = electronicService.selectListByEmpNo((searchVo), "1");
-
-		List<Map<String, Object>> ListRe = electronicService.selectListByEmpNo((searchVo), "2");
-
-		List<Map<String, Object>> ListFi = electronicService.selectListByEmpNo((searchVo), "6");
-
-		List<Map<String, Object>> ListReturn = electronicService.selectListByEmpNo((searchVo), "7");
-
-		logger.info("결재 대기 문서 보여주기  ListAp={}", ListAp);
-		logger.info("결재 수신 문서 보여주기  ListRe={}", ListRe);
-		logger.info("결재 완료 문서 보여주기  ListFi={}", ListFi);
-		logger.info("결재 완료 문서 보여주기  ListReturn={}", ListReturn);
-
-		model.addAttribute("ListAp", ListAp);
-		model.addAttribute("ListRe", ListRe);
-		model.addAttribute("ListFi", ListFi);
-		model.addAttribute("ListReturn", ListReturn);
-
-		model.addAttribute("navNo", 1);
-
-		return "electronic/electronicMain";
+	// 조건에 맞는 보낸 결재 목록 보여주기
+	@GetMapping("/sendList")
+	@ApiOperation(value = "보낸 결재 목록 조회")
+	public ResponseEntity<Map<String, Object>> sendList(SearchVO searchVo, int electronicCompletFlag,
+			int electronicDraft) {
+		Map<String, Object> map = new HashedMap<String, Object>();
+		String sortBy = searchVo.getSortBy();
+		if (sortBy != null) {
+			DataNameTransform dtf = DataNameTransform.valueOfLabel(sortBy);
+			searchVo.setSortBy(dtf.name());
+		}
+		map.put("electronicDraft", electronicDraft);
+		map.put("electronicCompletFlag", electronicCompletFlag);
+		map.put("searchVo", searchVo);
+		Map<String, Object> data = electronicService.sendList(map);
+		return new ResponseEntity<Map<String, Object>>(data, HttpStatus.OK);
 
 	}
 
-	// 자주쓰는 양식 리스트 보여주기
-	@GetMapping("/myDocument")
-	public void myDocument(HttpSession session, Model model) {
-		logger.info("자주쓰는 양식 페이지 보여주기 ");
-		String empNo = (String) session.getAttribute("empNo");
-		List<Map<String, Object>> list = electronicService.selectTopSty(Integer.parseInt(empNo));
+	// 조건에 맞는 받은 결재 목록 보여주기
+	@GetMapping("/receiveList")
+	@ApiOperation(value = "받은 결재 목록 조회")
+	public ResponseEntity<Map<String, Object>> receiveList(SearchVO searchVo, int electronicCompletFlag,
+			int approvalLineCompleteFlag) {
+		Map<String, Object> map = new HashedMap<String, Object>();
+		String sortBy = searchVo.getSortBy();
+		if (sortBy != null) {
+			DataNameTransform dtf = DataNameTransform.valueOfLabel(sortBy);
+			searchVo.setSortBy(dtf.name());
+		}
 
-		model.addAttribute("list", list);
-		model.addAttribute("navNo", 1);
+		map.put("approvalLineCompleteFlag", approvalLineCompleteFlag);
+		map.put("electronicCompletFlag", electronicCompletFlag);
+		map.put("searchVo", searchVo);
+		Map<String, Object> data = electronicService.receiveList(map);
+		return new ResponseEntity<Map<String, Object>>(data, HttpStatus.OK);
+
 	}
 
-	// 도장등록 화면 보여주기
-	@GetMapping("/insertStamp")
-	public void insertStamp() {
-		logger.info("도장 등록 페이지 보여주기");
+	// 조건에 맞는 받은 수신용 결재 목록 보여주기
+	@GetMapping("/readList")
+	@ApiOperation(value = "받은 결재 목록 조회")
+	public ResponseEntity<Map<String, Object>> readList(SearchVO searchVo) {
+		Map<String, Object> map = new HashedMap<String, Object>();
+		String sortBy = searchVo.getSortBy();
+		if (sortBy != null) {
+			DataNameTransform dtf = DataNameTransform.valueOfLabel(sortBy);
+			searchVo.setSortBy(dtf.name());
+		}
+
+		map.put("searchVo", searchVo);
+		Map<String, Object> data = electronicService.readList(map);
+		return new ResponseEntity<Map<String, Object>>(data, HttpStatus.OK);
 
 	}
 
-	// 문서 양식 선택화면 보여주기
-	@GetMapping("/documentSelect")
-	public void documentSty() {
-		logger.info("양식 선택 보여주기");
+	// 최근 사용 양식 목록 조회
+	@GetMapping("/recentlyList")
+	@ApiOperation(value = "최근 사용 양식 목록 조회")
+	public ResponseEntity<Map<String, Object>> recentlyList(int empNo) {
+		Map<String, Object> data = new HashedMap<String, Object>();
+		List<ElectronicRecentlyDTO> list = electronicService.selectRecentlyList(empNo);
+		data.put("list", list);
+		return new ResponseEntity<Map<String, Object>>(data, HttpStatus.OK);
 	}
 
-	// 결재자 라인 선택 화면 보여주기
-	@GetMapping("/documentSelectApproval")
-	public void documentSelectApproval() {
-		logger.info("결재라인 선택 화면 보여주기");
-	}
-
-	// 수신라인 선택화면 보여주기
-	@GetMapping("/documentSelectReceive")
-	public void documentSelectReceive() {
-		logger.info("결재라인 선택 화면 보여주기");
-	}
-
-	// 도장 등록하기
-	@PostMapping("/insertStamp")
-	public String insertStamp_post(@ModelAttribute ElectronicAppStampDTO stampVo, MultipartHttpServletRequest request,
-			HttpSession session, Model model) {
-		logger.info("도장 등록 페이지 보여주기");
-
-		// 파일 업로드
-		String fileName = "";
-		String msg = "도장등록 실패 또는 이미 등록이 되어있습니다. ", url = "/electronic/insertStamp";
+	// 사인 등록하기
+	@PostMapping("/registerSign")
+	@ApiOperation(value = "사인 이미지 등록 하기")
+	public ResponseEntity<String> insertStamp_post(@RequestParam MultipartFile sign, @RequestParam int empNo)
+			throws IllegalStateException, IOException {
 		int cnt = 0;
+		if (sign.getOriginalFilename() != "") {
 
-		List<MultipartFile> fileList = request.getFiles("upfile");
-		logger.info("fileList={}", fileList);
-		for (MultipartFile mf : fileList) {
-			if (mf.getOriginalFilename() != "") {
-				fileName = FileUploadUtil.getUniqueFileName(mf.getOriginalFilename());
+			ElectronicAppStampDTO appStampDto = new ElectronicAppStampDTO();
+			String str = servletContext.getRealPath(ConstUtil.ELECTRONIC_STAMPUP_PATH);
+			String fileName = FileUploadUtil.getUniqueFileName(sign.getOriginalFilename());
 
-				try {
-					mf.transferTo(new File(ConstUtil.ELECTRONIC_STAMPUP_LOAD_PATH_REAL + "\\" + fileName));
-				} catch (IllegalStateException | IOException e) {
-					e.printStackTrace();
-				}
-				stampVo.setStampName(fileName);
-				String empNo = (String) session.getAttribute("empNo");
-				logger.info("empNo={}", empNo);
-				stampVo.setEmpNo(Integer.parseInt(empNo));
-				logger.info("stampVo={}", stampVo);
+			sign.transferTo(new File(str + fileName));
+			appStampDto.setStampName(fileName);
+			appStampDto.setEmpNo(empNo);
+			cnt = stampService.registerStamp(appStampDto);
 
-				cnt = stampService.insertStamp(stampVo);
-
-				logger.info("stampVo={}", stampVo);
-
-				if (cnt > 0) {
-					msg = "도장 등록 완료";
-					url = "/electronic/insertStamp?cnt=" + cnt;
-				}
-				logger.info("cnt={}", cnt);
-
-			} // if
-		} // for
-		model.addAttribute("msg", msg);
-		model.addAttribute("url", url);
-
-		return "common/message";
+		} // if
+		if (cnt == 0)
+			throw new CustomException(CustomErrorCode.ELECTRONIC_STAMP_INSERT_FAIL, "결재 사인 등록 실패");
+		return new ResponseEntity<>(ConstUtil.SUCCESS, HttpStatus.OK);
 	}
 
-	// 기안서 작성 페이지 보여주기
-	@GetMapping("/documentWrite")
-	public void documentWrite(@RequestParam String styleNo, HttpSession session, Model model) {
-		logger.info("양식 작성 페이지 보여주기 파라미터 문서 번호 ={}", styleNo);
-		ElectronicDocStyDTO svo = electronicDocStyService.selectByStyleNo(styleNo);
-		String empNo = (String) session.getAttribute("empNo");
-		EmpDTO evo = empService.selectByEmpNo(Integer.parseInt(empNo));
-		List<DepartmentDTO> dvo = departmentService.selectAllDepartment();
-		List<PositionDTO> pvo = positionService.selectAllPosition();
+	// 사인 가져오기
+	@GetMapping("/selectSign")
+	@ApiOperation(value = "사인 이미지 가져오기")
+	public ResponseEntity<Map<String, Object>> seletStamp(@RequestParam int empNo) throws IOException {
+		Map<String, Object> data = new HashedMap<String, Object>();
+		String url = servletContext.getRealPath(ConstUtil.ELECTRONIC_STAMPUP_PATH);
+		ElectronicAppStampDTO appStampDto = stampService.selectStamp(empNo);
 
-		model.addAttribute("pvo", pvo);
-		model.addAttribute("dvo", dvo);
-		model.addAttribute("evo", evo);
-		model.addAttribute("svo", svo);
-	}
-
-	// 기안서 작성 하기
-	@PostMapping("/documentWrite")
-	public String documentWrite_post(@ModelAttribute ElectronicDTO vo, @RequestParam String AempNoData,
-			@RequestParam String RempNoData, @ModelAttribute ElectronicFileDTO fileVo,
-			MultipartHttpServletRequest request, HttpSession session, Model model) {
-		logger.info("양식 등록 하기 파라미터 ElectronicVo={}", vo);
-
-		String empNo = (String) session.getAttribute("empNo");
-		vo.setEmpNo(Integer.parseInt(empNo));
-
-		int cnt = electronicService.insertEle(vo);
-
-		logger.info("세션에서 empNo={}", empNo);
-		logger.info("결재 라인  AempNoData={}", AempNoData);
-		logger.info("수신 라인  RempNoData={}", RempNoData);
-
-		String draftVal = vo.getElectronicDraft();
-		String url = "/electronic/documentSelect?no=" + 1, msg = "";
-		if (draftVal.equals("1")) {
-			if (cnt > 0) {
-				msg = "임시저장 완료";
-				url = "/electronic/documentSelect?no=" + 2;
-			} else {
-				msg = "임시저장 실패";
-			}
+		if (appStampDto == null) {
+			throw new CustomException(CustomErrorCode.ELECTRONIC_STAMP_NOT_FIND, "해당 사원 번호로 도장 검색 결과 없음");
 		} else {
-			if (cnt > 0) {
-				msg = "기안서 보내기 완료";
-				url = "/electronic/documentSelect?no=" + 2;
-			} else {
-				msg = "기안서 보내기 실패";
-			}
+			url += appStampDto.getStampName();
+
+			InputStream imageIS = new FileInputStream(url);
+			byte[] imageByteArray = IOUtils.toByteArray(imageIS);
+			data.put("image", imageByteArray);
+			imageIS.close();
+
+			data.put("url", url);
+			data.put("result", ConstUtil.SUCCESS);
+			return new ResponseEntity<>(data, HttpStatus.OK);
 		}
 
-		int electronicNo = electronicService.selectMaxEleNo(Integer.parseInt(empNo));
-		logger.info("electronicNo={}", electronicNo);
-
-		if (AempNoData.length() != 0) {
-
-			String[] ApEmpNo = AempNoData.split(","); // 결재자 번호 배열
-
-			for (int i = 0; i < ApEmpNo.length; i++) {
-
-				String apempno = ApEmpNo[i];
-				ElectronicAppLineDTO avo = new ElectronicAppLineDTO();
-				avo.setEmpNo(Integer.parseInt(apempno)); // 결재자 번호
-				avo.setApprovalLineOrder(i); // 결재 자 순서 번호
-				avo.setElectronicNo(electronicNo); // 문서 번호
-				avo.setApprovalLineCompleteFlag("0");
-
-				int cnt2 = electronicAppService.insertAppLine(avo);
-
-			}
-
-		}
-
-		if (RempNoData.length() > 0) {
-
-			String[] ReEmpNo = RempNoData.split(","); // 수신자 번호 배열
-
-			for (int i = 0; i < ReEmpNo.length; i++) {
-				String reempno = ReEmpNo[i];
-				ElectronicReLineDTO rvo = new ElectronicReLineDTO();
-				rvo.setEmpNo(Integer.parseInt(reempno));
-				rvo.setElectronicNo(electronicNo);
-				rvo.setReceiveLineFlag("0");
-
-				int cnt3 = electronicReService.insertReLine(rvo);
-			}
-		}
-
-		// 파일 업로드
-		String fileName = "", originalFileName = "";
-		long fileSize = 0;
-
-		List<MultipartFile> fileList = request.getFiles("upfile");
-		logger.info("fileList={}", fileList);
-		for (MultipartFile mf : fileList) {
-			if (mf.getOriginalFilename() != "") {
-				originalFileName = mf.getOriginalFilename();
-				fileSize = mf.getSize();
-				fileName = FileUploadUtil.getUniqueFileName(mf.getOriginalFilename());
-
-				try {
-					mf.transferTo(new File(ConstUtil.ELECTRONIC_UPLOAD_PATH_REAL + "\\" + fileName));
-				} catch (IllegalStateException | IOException e) {
-					e.printStackTrace();
-				}
-
-				logger.info("파일 업로드 완료, fileName={}, originalFileName={}, fileSize={}", fileName, originalFileName,
-						fileSize);
-				fileVo.setElectronicNo(electronicNo);
-				fileVo.setFileName(fileName);
-				fileVo.setFileOriginalname(originalFileName);
-				fileVo.setFileSize(fileSize);
-				logger.info("fileVo={}", fileVo);
-
-				int file = electronicFileService.insertFile(fileVo);
-				logger.info("file={}", file);
-			} // if
-		} // fot
-
-		model.addAttribute("msg", msg);
-		model.addAttribute("url", url);
-
-		return "common/message";
 	}
 
-	// 기안서 업데이트 하기
-	@RequestMapping("/documentUpdate")
-	public String documentUpdate(@ModelAttribute ElectronicDTO vo, @RequestParam String AempNoData,
-			MultipartHttpServletRequest request, @ModelAttribute ElectronicFileDTO fileVo,
-			@RequestParam String RempNoData, HttpSession session, Model model) {
-		logger.info("양식 수정 하기 파라미터 ElectronicVo={}", vo);
+	// 양식 폴더 and 양식 가져오기
+	@GetMapping("/selectFormTree")
+	@ApiOperation(value = "양식 폴더 + 양식 목록 가져오기")
+	public ResponseEntity<Map<String, Object>> selectFormTree() {
+		Map<String, Object> data = new HashedMap<String, Object>();
+		List<Map<String, Object>> treeData = new ArrayList<>();
+		List<ElectronicDocFolDTO> folderlist = electronicDocFolService.selectAll();
+		if (folderlist != null) {
+			for (int i = 0; i < folderlist.size(); i++) {
+				Map<String, Object> tree = new HashedMap<String, Object>();
+				List<Map<String, Object>> children = new ArrayList<>();
+				ElectronicDocFolDTO folderDto = folderlist.get(i);
+				int folderNo = folderDto.getFolderNo();
+				List<ElectronicDocStyDTO> docStyList = electronicDocStyService.selectByFolderNo(folderNo);
 
-		String empNo = (String) session.getAttribute("empNo");
-		vo.setEmpNo(Integer.parseInt(empNo));
-
-		int cnt = electronicService.updateEle(vo); // 기안서 업데이트
-
-		logger.info("세션에서 empNo={}", empNo);
-		logger.info("결재 라인  AempNoData={}", AempNoData);
-		logger.info("수신 라인  RempNoData={}", RempNoData);
-
-		int electronicNo = vo.getElectronicNo();
-		logger.info("electronicNo={}", electronicNo);
-
-		if (AempNoData.length() != 0) {
-
-			String[] ApEmpNo = AempNoData.split(",");
-
-			for (int i = 0; i < ApEmpNo.length; i++) {
-				String apempno = ApEmpNo[i];
-				ElectronicAppLineDTO avo = new ElectronicAppLineDTO();
-				avo.setEmpNo(Integer.parseInt(apempno)); // 결재자 번호
-				avo.setApprovalLineOrder(i); // 결재 자 순서 번호
-				avo.setElectronicNo(electronicNo); // 문서 번호
-				avo.setApprovalLineCompleteFlag("0");
-
-				if (electronicAppService.selectForCheckExist(avo) != 1) {
-					int cnt2 = electronicAppService.insertAppLine(avo);
+				for (int j = 0; j < docStyList.size(); j++) {
+					Map<String, Object> child = new HashMap<>();
+					ElectronicDocStyDTO styDto = docStyList.get(j);
+					child.put("name", styDto.getStyleName());
+					child.put("folderNo", folderNo);
+					child.put("folderStyleNo", styDto.getFolderStyleNo());
+					children.add(child);
 				}
 
+				tree.put("name", folderDto.getFolderName());
+				tree.put("children", children);
+				treeData.add(tree);
 			}
-		}
 
-		if (RempNoData.length() != 0) {
-
-			String[] ReEmpNo = RempNoData.split(",");
-
-			for (int i = 0; i < ReEmpNo.length; i++) {
-				String reempno = ReEmpNo[i];
-				ElectronicReLineDTO rvo = new ElectronicReLineDTO();
-				rvo.setEmpNo(Integer.parseInt(reempno));
-				rvo.setElectronicNo(electronicNo);
-				rvo.setReceiveLineFlag("0");
-
-				if (electronicReService.selectForCheckExist(rvo) != 1) {
-					int cnt3 = electronicReService.insertReLine(rvo);
-				}
-			}
-		}
-
-		String url = "/electronic/electronicList?no=" + 5, msg = "실패";
-
-		if (vo.getElectronicDraft().equals("1")) { // 아직 임시저장 문서
-			if (cnt > 0) {
-				msg = "기안서 수정 완료";
-				url = "/electronic/electronicList?no=" + 5;
-			}
+			data.put("treeData", treeData);
+			data.put("res", ConstUtil.SUCCESS);
 		} else {
-			if (cnt > 0) {
-				msg = "기안서 기안 완료";
-				url = "/electronic/electronicList?no=" + 5;
-			}
+			throw new CustomException(CustomErrorCode.ELECTRONIC_FOLDER_NOT_FIND, "폴더 리스트 없음");
+		}
+		return new ResponseEntity<>(data, HttpStatus.OK);
+	}
+
+	// 결재 처리하기(등록, 수정)
+	@Transactional
+	@PostMapping("/registerElimp")
+	@ApiOperation(value = "결재 등록/수정 하기")
+	public ResponseEntity<Map<String, Object>> insertImp(int elNo, @RequestParam(required = false) int[] approver,
+			@RequestParam(required = false) int[] receiver, int empNo, String title, @RequestParam String content,
+			@RequestParam(required = false) List<MultipartFile> files, int folderStyleNo, int folderNo, int emergency,
+			int draft, @RequestParam String empName, int currentDraft) throws Exception {
+		logger.info("receiver={}", receiver);
+		logger.info("receiver={}", approver);
+		logger.info("empNo={}", empNo);
+		logger.info("title={}", title);
+		logger.info("file={}", files);
+		logger.info("content={}", content);
+		logger.info("folderStyleNo={}", folderStyleNo);
+		logger.info("folderNo={}", folderNo);
+		logger.info("empName={}", empName);
+
+		Map<String, Object> data = new HashMap<>();
+		int styleNo = electronicDocStyService.selectByFolderStyleNo(folderNo, folderStyleNo);
+		ElectronicDocStyDTO styDto = electronicDocStyService.selectByStyleNo(styleNo);
+
+		ElectronicDTO elDto = new ElectronicDTO();
+		elDto.setElectronicContent(content);
+		elDto.setElectronicDraft(draft);
+		elDto.setElectronicEmergencyFlag(emergency);
+		elDto.setElectronicFileFlag(files == null ? 0 : 1);
+		elDto.setElectronicTitle(title);
+		elDto.setEmpName(empName);
+		elDto.setEmpNo(empNo);
+		elDto.setStyleName(styDto.getStyleName());
+		elDto.setStyleNo(styleNo);
+		elDto.setElectronicNo(elNo);
+
+		if (currentDraft == 0) {
+			int res = electronicService.insertEle(elDto);
+			if (res == 0)
+				throw new CustomException(CustomErrorCode.ELECTRINIC_INSERT_FAIL, "결재 등록 실패");
+
+		} else {
+			int res = electronicService.updateEle(elDto);
+			if (res == 0)
+				throw new CustomException(CustomErrorCode.ELECTRINIC_UPDATE_FAIL, "결재 수정 실패");
 		}
 
-		// 파일 업로드
-		String fileName = "", originalFileName = "";
-		long fileSize = 0;
+		if (draft == 0) {
+			int electronicNo = elNo;
 
-		List<MultipartFile> fileList = request.getFiles("upfile");
-		logger.info("fileList={}", fileList);
-		for (MultipartFile mf : fileList) {
-			if (mf.getOriginalFilename() != "") {
-				originalFileName = mf.getOriginalFilename();
-				fileSize = mf.getSize();
-				fileName = FileUploadUtil.getUniqueFileName(mf.getOriginalFilename());
+			if (elNo == 0) {
+				electronicNo = electronicService.selectMaxEleNo(empNo);
+			}
 
-				try {
-					mf.transferTo(new File(ConstUtil.ELECTRONIC_UPLOAD_PATH_REAL + "\\" + fileName));
-				} catch (IllegalStateException | IOException e) {
-					e.printStackTrace();
+			if (files != null) {
+				String str = servletContext.getRealPath(ConstUtil.ELECTRONIC_FILE_PATH);
+				ElectronicFileDTO fileDto = new ElectronicFileDTO();
+				for (MultipartFile file : files) {
+					String fileName = FileUploadUtil.getUniqueFileName(file.getOriginalFilename());
+
+					file.transferTo(new File(str + fileName));
+
+					fileDto.setFileOriginalname(file.getOriginalFilename());
+					fileDto.setFileName(fileName);
+					fileDto.setElectronicNo(electronicNo);
+					fileDto.setFileSize(file.getSize());
+					int res = electronicFileService.insertFile(fileDto);
+
+					if (res == 0)
+						throw new CustomException(CustomErrorCode.ELECTRONIC_FILE_INESERT_FAIL, "결재 파일 등록 실패");
+
 				}
+			}
 
-				logger.info("파일 업로드 완료, fileName={}, originalFileName={}, fileSize={}", fileName, originalFileName,
-						fileSize);
-				fileVo.setElectronicNo(electronicNo);
-				fileVo.setFileName(fileName);
-				fileVo.setFileOriginalname(originalFileName);
-				fileVo.setFileSize(fileSize);
-				logger.info("fileVo={}", fileVo);
+			for (int i = 0; i < approver.length; i++) {
+				int apempno = approver[i];
+				ElectronicAppLineDTO appDto = new ElectronicAppLineDTO();
+				appDto.setEmpNo(apempno); // 결재자 번호
+				appDto.setApprovalLineOrder(i); // 결재 자 순서 번호
+				appDto.setElectronicNo(electronicNo); // 문서 번호
+				if (i == 0) {
+					appDto.setApprovalLineCompleteFlag(0);
+				} else {
+					appDto.setApprovalLineCompleteFlag(3);
+				}
+				int res = electronicAppService.insertAppLine(appDto);
 
-				int file = electronicFileService.insertFile(fileVo);
-				logger.info("file={}", file);
-			} // if
-		} // fot
+				if (res == 0)
+					throw new CustomException(CustomErrorCode.ELECTRONIC_APPLINE_INESERT_FAIL, "결재자 등록 실패");
 
-		model.addAttribute("msg", msg);
-		model.addAttribute("url", url);
+			}
 
-		return "common/message";
+			for (int i = 0; i < receiver.length; i++) {
+				int reempno = receiver[i];
+				ElectronicReLineDTO rdto = new ElectronicReLineDTO();
+				rdto.setEmpNo(reempno);
+				rdto.setElectronicNo(electronicNo);
+				rdto.setReceiveLineFlag(0);
+				int res = electronicReService.insertReLine(rdto);
+
+				if (res == 0)
+					throw new CustomException(CustomErrorCode.ELECTRONIC_RELINE_INESERT_FAIL, "수신자 등록 실패");
+			}
+			ElectronicRecentlyDTO recentlyrDto = new ElectronicRecentlyDTO();
+			recentlyrDto.setEmpNo(empNo);
+			recentlyrDto.setStyleName(styDto.getStyleName());
+			recentlyrDto.setStyleNo(styleNo);
+			int res = electronicService.insertRecently(recentlyrDto);
+			if (res == 0) {
+				throw new CustomException(CustomErrorCode.ELECTRONIC_RECENTLY_INESERT_FAIL, "수신자 등록 실패");
+			}
+
+		}
+
+		if (elNo == 0) {
+			elNo = electronicService.selectMaxEleNo(empNo);
+		}
+		data.put("electronicNo", elNo);
+		return new ResponseEntity<>(data, HttpStatus.OK);
 	}
 
-	// 사이드 바에서 항목 선택시 리스트 보여주기
-	@RequestMapping("/electronicList")
-	public void electronicWait(@RequestParam String no, HttpSession session, @ModelAttribute SearchVO searchVo, @RequestParam(defaultValue = "0") int recordPerPage,
-			Model model) {
+	// 결재 정보 상세보기
+	@GetMapping("/detail")
+	@ApiOperation(value = "결재 상세 보기")
+	public ResponseEntity<Map<String, Object>> electronicDetail(int electronicNo, int titleNo, int empNo) {
+		Map<String, Object> data = new HashMap<>();
+		String url = servletContext.getRealPath(ConstUtil.ELECTRONIC_STAMPUP_PATH);
 
-		String empNo = (String) session.getAttribute("empNo");
-		logger.info("결재 리스트 보여주기 파라미터 empNo={}", empNo);
-
-		List<EmpDTO> allEmp = empService.selectAllEmp();
-
-		/* 페이징 처리 */
-		PaginationInfo pagingInfo = new PaginationInfo();
-		pagingInfo.setCurrentPage(searchVo.getCurrentPage());
-		pagingInfo.setBlockSize(ConstUtil.BLOCK_SIZE_ELE);
-		if(recordPerPage < 1) {
-			pagingInfo.setRecordCountPerPage(ConstUtil.RECORD_COUNT_ELE);
-		}else {
-			pagingInfo.setRecordCountPerPage(recordPerPage);
+		// 결재 문서와 양식 가져오기 시작
+		ElectronicDTO elDto = electronicService.selectByElectronicNo(electronicNo);
+		if (elDto == null) {
+			throw new CustomException(CustomErrorCode.ELECTRINIC_NOT_FIND, "해당 번호의 문서 없음");
 		}
-
-		searchVo.setFirstRecordIndex(pagingInfo.getFirstRecordIndex());
-		if(recordPerPage  < 1) {
-			searchVo.setRecordCountPerPage(ConstUtil.RECORD_COUNT_ELE);
-		}else {
-			searchVo.setRecordCountPerPage(recordPerPage);
+		ElectronicDocStyDTO elStyDto = electronicDocStyService.selectByStyleNo(elDto.getStyleNo());
+		if (elStyDto == null) {
+			throw new CustomException(CustomErrorCode.ELECTRONIC_STYLE_NOT_FIND, "해당 번호의 양식 없음");
 		}
-		searchVo.setEmpNo(empNo);
+		// 결재 문서와 양식 가져오기 끝
 
-		logger.info("사이드바 선택 번호 no ={}", no);
-		int cnt = electronicService.TotalSelectListByEmpNo(searchVo, no);
-
-		pagingInfo.setTotalRecord(cnt);
-
-		logger.info("페이지 번호 관련 셋팅 후 serachVo={}", searchVo);
-
-		List<Map<String, Object>> List = electronicService.selectListByEmpNo(searchVo, no);
-
-		logger.info("결재 리스트 보여주기 결과 List={}", List);
-
-		List<ElectronicAppLineDTO> approList = new ArrayList<ElectronicAppLineDTO>();
-
-		for (int i = 0; i < List.size(); i++) {
-			Map<String, Object> mList = List.get(i);
-			String eleNo = String.valueOf(mList.get("ELECTRONIC_NO"));
-
-			logger.info("eleNo={}", eleNo);
-
-			ElectronicDTO evo = new ElectronicDTO();
-
-			evo.setElectronicNo(Integer.parseInt(eleNo));
-			evo.setEmpNo(Integer.parseInt(empNo));
-			logger.info("evo={}", evo);
-			if (electronicAppService.selectAppLineCheck(evo) == null) {
-				ElectronicAppLineDTO eevo = new ElectronicAppLineDTO();
-				eevo.setElectronicNo(Integer.parseInt(eleNo));
-				eevo.setEmpNo(Integer.parseInt(empNo));
-				eevo.setApprovalLineCompleteFlag("1");
-				approList.add(eevo); // 내 앞사람이 승인을 했는지 안했는지
+		// 가져오려는 문서 상태와 정보가 일치하는 검사 시작
+		if (titleNo == ConstUtil.ELECTRONIC_SEND_WAIT || titleNo == ConstUtil.ELECTRONIC_SEND_RETURN
+				|| titleNo == ConstUtil.ELECTRONIC_SEND_APPROVE) {
+			if (elDto.getEmpNo() != empNo) {
+				throw new CustomException(CustomErrorCode.ELECTRINIC_EMPNO_NOT_MATCH, "send일때 사용자 번호가 일치하지 않음");
 			} else {
-				approList.add(electronicAppService.selectAppLineCheck(evo)); // 내 앞사람이 승인을 했는지 안했는지
+				// 해당 문서의 상태와 현재 불러오려는 문서의 상태가 동일한지 확인
+				if ((titleNo == ConstUtil.ELECTRONIC_SEND_WAIT && elDto.getElectronicCompletFlag() != 0)
+						|| (titleNo == ConstUtil.ELECTRONIC_SEND_RETURN && elDto.getElectronicCompletFlag() != 2)
+						|| (titleNo == ConstUtil.ELECTRONIC_SEND_APPROVE && elDto.getElectronicCompletFlag() != 1)) {
+					throw new CustomException(CustomErrorCode.ELECTRINIC_STATUS_DISCORD, "불러오려는 문서 상태와 현재 문서 상태가 불일치");
+				}
+			}
+		} else if (titleNo == ConstUtil.ELECTRONIC_RECEIVE_READ) {
+			int cnt = electronicReService.selectForCheckExist(electronicNo, empNo);
+			if (cnt == 0) {
+				throw new CustomException(CustomErrorCode.ELECTRINIC_STATUS_DISCORD, "받은 문서에 수신자로 포함되지 않음");
+			}
+		} else if (titleNo == ConstUtil.ELECTRONIC_RECEIVE_APPROVE) {
+			int cnt = electronicAppService.selectForCheckExist(electronicNo, empNo, 1);
+			if (cnt == 0) {
+				throw new CustomException(CustomErrorCode.ELECTRINIC_STATUS_DISCORD, "받은 문서에 승인하지 않음");
+			}
+		} 
+		else if (titleNo == ConstUtil.ELECTRONIC_RECEIVE_PLAN) {
+			int cnt = electronicAppService.selectForCheckExist(electronicNo, empNo, 3);
+			if (cnt == 0) {
+				throw new CustomException(CustomErrorCode.ELECTRINIC_STATUS_DISCORD, "받은 문서에 예정 상태 아님");
 			}
 		}
-		logger.info("approList={}", approList);
-
-		model.addAttribute("approList", approList);
-		model.addAttribute("List", List);
-		model.addAttribute("allEmp", allEmp);
-		model.addAttribute("pagingInfo", pagingInfo);
-		model.addAttribute("navNo", 1);
-	}
-
-	// 문서 선택시 문서 디테일 보여주기
-	@GetMapping("/electronicDetail")
-	public void electronicDetail(@RequestParam int ElectronicNo, @RequestParam String no, HttpSession session,
-			Model model) {
-		logger.info("문서 선택시 디테일 화면 보여주기 파라미터 ElectronicNo={}", ElectronicNo);
-		ElectronicDTO vo = electronicService.selectByElectronicNo(ElectronicNo);
-		logger.info("vo={}", vo);
-		ElectronicDocStyDTO svo = electronicDocStyService.selectByStyleNo(Integer.toString(vo.getStyleNo()));
-		String styleContent = svo.getStyleContent();
-		logger.info("styleContent={}", styleContent);
-		List<ElectronicAppLineDTO> avo = electronicAppService.selectByElectronicNo(ElectronicNo);
-		List<ElectronicReLineDTO> rvo = electronicReService.selectByElectronicNo(ElectronicNo);
-		logger.info("avo={}, rvo={}", avo, rvo);
-		List<ElectronicFileDTO> fvo = electronicFileService.selectFileByEleNo(ElectronicNo);
-
-		String empNo = (String) session.getAttribute("empNo");
-		EmpDTO evo = empService.selectByEmpNo(Integer.parseInt(empNo));
-		List<DepartmentDTO> dvo = departmentService.selectAllDepartment();
-		List<PositionDTO> pvo = positionService.selectAllPosition();
-
-		model.addAttribute("pvo", pvo);
-		model.addAttribute("dvo", dvo);
-		model.addAttribute("evo", evo);
-
-		model.addAttribute("fvo", fvo);
-		model.addAttribute("avo", avo);
-		model.addAttribute("rvo", rvo);
-		model.addAttribute("vo", vo);
-		model.addAttribute("navNo", 1);
-		model.addAttribute("styleContent", styleContent);
-		// http://localhost:9091/lylj/electronic/electronicDetail?ElectronicNo=1
-	}
-
-	// 결재 승인
-	@RequestMapping("/AcceptUpdateAppLine")
-	public String AcceptUpdateAppLine(@ModelAttribute ElectronicDTO vo, @RequestParam String no, Model model) {
-		logger.info("리스트 번호 no ={}", no);
-		logger.info("AppLine 업데이트 파라미터 electronicVo={}", vo);
-
-		int cnt = 0;
-		ElectronicAppLineDTO evo = null;
-		int uptodate = 0;
-		if (electronicAppService.selectAppLineCheck(vo) != null) {
-			evo = electronicAppService.selectAppLineCheck(vo); // 내 앞사람이 승인을 했는지 안했는지
-			logger.info("앞 라인 승인 여부 evo.getApprovalLineCompleteFlag()={}", evo.getApprovalLineCompleteFlag());
-
-			if (evo.getApprovalLineCompleteFlag().equals("1")) { // 앞사람이 승인을 했으면
-				cnt = electronicAppService.AcceptUpdateAppLine(vo);
-				uptodate = electronicService.upToDate(vo.getElectronicNo());
-			} // 앞사람이 승인을 안했으면
-
-		} else { // 앞사람이 없으면
-			cnt = electronicAppService.AcceptUpdateAppLine(vo);
-			uptodate = electronicService.upToDate(vo.getElectronicNo());
-		}
-		logger.info("날짜 최시화 uptodate={}", uptodate);
-
-		List<ElectronicAppLineDTO> list = electronicAppService.selectByElectronicNo(vo.getElectronicNo());
-
-		int sum = 0;
-		for (int i = 0; i < list.size(); i++) {
-			ElectronicAppLineDTO getList = list.get(i);
-			if (getList.getApprovalLineCompleteFlag().equals("1")) {
-				sum += 1;
+		else if (titleNo == ConstUtil.ELECTRONIC_RECEIVE_RETURN) {
+			int cnt = electronicAppService.selectForCheckExist(electronicNo, empNo, 2);
+			if (cnt == 0) {
+				throw new CustomException(CustomErrorCode.ELECTRINIC_STATUS_DISCORD, "받은 문서에 반려 하지 않음");
 			}
 		}
-		int completeCnt = 0;
-		if (sum == list.size()) {
-			completeCnt = electronicService.updateEleComplete(vo.getElectronicNo());
+		else if (titleNo == ConstUtil.ELECTRONIC_RECEIVE_WAIT) {
+			int cnt = electronicAppService.selectForCheckExist(electronicNo, empNo, 0);
+			if (cnt == 0) {
+				throw new CustomException(CustomErrorCode.ELECTRINIC_STATUS_DISCORD, "받은 문서에 승인할 차례 아님");
+			}
+		}
+		// 가져오려는 문서 상태와 정보가 일치하는 검사 끝
+
+		// 결재 라인 불러오기 시작
+		List<ElectronicAppLineDTO> appList = electronicAppService.selectByElectronicNo(electronicNo);
+		if (appList == null) {
+			throw new CustomException(CustomErrorCode.ELECTRONIC_APPLINE_NOT_FIND, "해당 문서 번호로 검색 결과 결재 라인 없음");
 		}
 
-		String url = "/electronic/electronicList?no=" + no, msg = "승인 순서가 아닙니다.";
-		if (cnt > 0) {
-			msg = "승인 완료";
+		List<Map<String, Object>> approver = new ArrayList<>();
+		for (ElectronicAppLineDTO dto : appList) {
+			byte[] imageSrc = null;
+			Map<String, Object> map = new HashMap<>();
+
+			EmpDTO edto = empService.selectByEmpNo(dto.getEmpNo());
+			if (edto == null) {
+				throw new CustomException(CustomErrorCode.UserNotFound, "해당 사원 검색 결과 없음");
+			}
+			map.put("empName", edto.getEmpName());
+
+			if (dto.getApprovalLineCompleteFlag() == 1) {
+				ElectronicAppStampDTO sdto = stampService.selectStamp(dto.getEmpNo());
+				if (sdto == null) {
+					throw new CustomException(CustomErrorCode.ELECTRONIC_STAMP_NOT_FIND, "해당 사원의 사인 검색 결과 없음");
+				}
+				imageSrc = itf.transImage(url + sdto.getStampName());
+			} else if (dto.getApprovalLineCompleteFlag() == 2) {
+				imageSrc = itf.transImage(url + "stop.png");
+			}
+			map.put("imageSrc", imageSrc);
+			map.put("appLine", dto);
+
+			approver.add(map);
 		}
-		if (completeCnt > 0) {
-			msg = "결재 최종 완료";
+		// 결재 라인 불러오기 끝
+
+		// 첨부 파일 정보 가져오기 시작
+		List<ElectronicFileDTO> fileList = electronicFileService.selectFileByEleNo(electronicNo);
+		// 첨부 파일 정보 가져오기 끝
+
+		data.put("fileList", fileList);
+		data.put("approver", approver);
+		data.put("elDto", elDto);
+		data.put("elStyDto", elStyDto);
+
+		return new ResponseEntity<Map<String, Object>>(data, HttpStatus.OK);
+	}
+
+	// 해당 양식 번호의 양식 가져오기
+	@GetMapping("/selectElSty")
+	@ApiOperation(value = "양식 번호로 양식 찾기")
+	public ResponseEntity<Map<String, Object>> selectElSty(int styleNo) {
+		Map<String, Object> data = new HashMap<>();
+
+		ElectronicDocStyDTO elStyDto = electronicDocStyService.selectByStyleNo(styleNo);
+		if (elStyDto == null) {
+			throw new CustomException(CustomErrorCode.ELECTRONIC_STYLE_NOT_FIND, "해당 번호의 양식 없음");
 		}
 
-		model.addAttribute("msg", msg);
-		model.addAttribute("url", url);
-		model.addAttribute("navNo", 1);
+		data.put("elStyDto", elStyDto);
+		return new ResponseEntity<Map<String, Object>>(data, HttpStatus.OK);
+	}
 
-		return "common/message";
+	// 임시저장 불러오기
+	@GetMapping("/draft")
+	@ApiOperation(value = "임시 저장한 결재 내용 불러오기")
+	public ResponseEntity<Map<String, Object>> selectElByDraft(int empNo, int electronicNo) {
+		Map<String, Object> data = new HashMap<>();
+
+		ElectronicDTO elDto = electronicService.selectByElectronicNo(electronicNo);
+
+		if (elDto == null) {
+			throw new CustomException(CustomErrorCode.ELECTRINIC_NOT_FIND, "해당 번호의 결재 정보 없음");
+
+		} else if (elDto.getEmpNo() != empNo) {
+			throw new CustomException(CustomErrorCode.ELECTRINIC_EMPNO_NOT_MATCH, "해당 결재 정보의 사용자 번호와 입력된 사용자 번호 불일치");
+		} else if (elDto.getElectronicDraft() != 1) {
+			throw new CustomException(CustomErrorCode.ELECTRINIC_IS_NOT_DRATF, "해당 결재 정보가 임시파일이 아님");
+		}
+
+		data.put("elDto", elDto);
+		return new ResponseEntity<Map<String, Object>>(data, HttpStatus.OK);
 	}
 
 	// 파일 다운로드 처리
-	@RequestMapping("/download")
-	public void download(@RequestParam(defaultValue = "0") int fileNo, HttpServletResponse response) throws Exception {
-		// 1
-		logger.info("다운로드 처리, 파라미터 fileNo={}", fileNo);
+	@GetMapping("/download")
+	@ApiOperation(value = "첨부 파일 다운로드")
+	public ResponseEntity<Resource> download(@ModelAttribute("file") ElectronicFileDTO fileDto) throws Exception {
+		String str = servletContext.getRealPath(ConstUtil.ELECTRONIC_FILE_PATH) + fileDto.getFileName();
 
-		// 2
-		ElectronicFileDTO fileVO = electronicFileService.selectFileByFileNo(fileNo);
-		logger.info("originalFileName={}", fileVO.getFileOriginalname());
-
-		// 3
-		String fileName = fileVO.getFileOriginalname();
-		String fileSaveName = fileVO.getFileName();
-		String filePath = ConstUtil.ELECTRONIC_UPLOAD_PATH_REAL + "\\";
-
-		response.setHeader("Content-Disposition",
-				"attachment; filename=\"" + URLEncoder.encode(fileName, "UTF-8") + "\"");
-		response.setHeader("Content-Transfer-Encoding", "binary");
-		response.setHeader("Content-Type", "application/octet-stream");
-		response.setHeader("Pragma", "no-cache;");
-		response.setHeader("Expires", "-1;");
-
-		OutputStream os = response.getOutputStream();
-		FileInputStream fis = new FileInputStream(filePath + fileSaveName);
-
-		int readCount = 0;
-		byte[] buffer = new byte[1024];
-
-		while ((readCount = fis.read(buffer)) != -1) {
-			os.write(buffer, 0, readCount);
-		}
-		fis.close();
-		os.close();
-	}
-
-
-	// 결재 반려 이메일 작성 보여주기
-	@GetMapping("/electronicReturnEmail")
-	public void eleReturnEmail() {
-		logger.info("결재 반려 이메일 작성 페이지 보여주기");
-	}
-
-	// 결재 반려 이메일 전송 및 반려 처리
-	@PostMapping("/electronicReturnEmail")
-	public String eleReturnEmail_post(@ModelAttribute EmailDTO emailVo,@RequestParam int ElectronicNo, Model model) {
-		logger.info("결재 반려 이메일 파라미터 emailVo={}", emailVo);
-		logger.info("결재 반려하기 파라미터 electronicNo ={}", ElectronicNo);
-		
-		int cnt = emailService.sendEmail(emailVo);
-		
-		String url = "/electronic/electronicReturnEmail", msg="반려 메일 전송 실패";
-		if(cnt>0) {
-			msg = "반려 메일 전송 완료";
-		}
-		
-		int cnt2 = electronicService.updateEleReturn(ElectronicNo);
-		
-		if (cnt2 > 0) {
-			msg = "결재 반려 완료/ 메일 전송 완료";
-		}
-		
-		model.addAttribute("url", url);
-		model.addAttribute("msg", msg);
-		
-		return "common/message";
-	}
-
-	// 결재자 삭제
-	@RequestMapping("deleteAppLine")
-	@ResponseBody
-	public int deleteAppLine(@RequestParam(value = "empNo[]") String[] empNo, @RequestParam String electronicNo) {
-		ElectronicAppLineDTO vo = new ElectronicAppLineDTO();
-		vo.setElectronicNo(Integer.parseInt(electronicNo));
-
-		int result = 0;
-		for (int i = 0; i < empNo.length; i++) {
-			logger.info("AppLine 삭제 파라미터 empNo={}", empNo[i]);
-			vo.setEmpNo(Integer.parseInt(empNo[i]));
-			int cnt = electronicAppService.deleteAppLine(vo);
-			logger.info("AppLine 삭제 파라미터 vo ={}", vo);
-			if (cnt > 0) {
-				logger.info("삭제 완료");
-				result = cnt;
-			}
-		}
-		return result;
-	}
-
-	// 수신자 삭제
-	@RequestMapping("deleteReLine")
-	@ResponseBody
-	public int deleteReLine(@RequestParam(value = "empNo[]") String[] empNo, @RequestParam String electronicNo) {
-		ElectronicReLineDTO vo = new ElectronicReLineDTO();
-		vo.setElectronicNo(Integer.parseInt(electronicNo));
-
-		int result = 0;
-		for (int i = 0; i < empNo.length; i++) {
-			logger.info("ReLine 삭제 파라미터 empNo={}", empNo[i]);
-			vo.setEmpNo(Integer.parseInt(empNo[i]));
-			int cnt = electronicReService.deleteReLine(vo);
-			logger.info("ReLine 삭제 파라미터 vo ={}", vo);
-			if (cnt > 0) {
-				logger.info("삭제 완료");
-				result = cnt;
-			}
-		}
-		return result;
-	}
-
-	// 수신 승인
-	@RequestMapping("/AcceptUpdateReLine")
-	public String AcceptUpdateReLine(@ModelAttribute ElectronicDTO vo, @RequestParam String no, Model model) {
-		logger.info("리스트 번호 no ={}", no);
-		logger.info("ReLine 업데이트 파라미터 electronicVo={}", vo);
-		int cnt = electronicReService.AcceptUpdateReLine(vo);
-		String url = "/electronic/electronicList?no=" + no, msg = "수신 실패";
-		if (cnt > 0) {
-			msg = "수신 확인";
+		System.out.println(str);
+		File file = new File(str);
+		if (!file.exists()) {
+			throw new CustomException(CustomErrorCode.ELECTRONIC_FILE_NOT_FIND, "해당 파일이 없음");
 		}
 
-		model.addAttribute("msg", msg);
-		model.addAttribute("url", url);
-		model.addAttribute("navNo", 1);
+		HttpHeaders header = new HttpHeaders();
+		Path fPath = Paths.get(file.getAbsolutePath());
 
-		return "common/message";
+		header.add(HttpHeaders.CONTENT_DISPOSITION,
+				"attachment; fileName=" + URLEncoder.encode(fileDto.getFileOriginalname(), "UTF-8"));
+		header.add("Cache-Control", "no-cache, no-store, must-revalidate");
+		header.add("Pragma", "no-cache");
+		header.add("Expires", "0");
+		ByteArrayResource rsc = new ByteArrayResource(Files.readAllBytes(fPath));
+
+		return ResponseEntity.ok().headers(header).contentLength(file.length())
+				.contentType(MediaType.parseMediaType("application/octet-stream")).body(rsc);
 	}
 
-	// 양식 선택시 양식 미리보기 화면 보여주기
-	@GetMapping("/documentDetail")
-	public String documentDetail(@RequestParam String styleNo, Model model) {
-		logger.info("양식 선택시 디테일 화면 보여주기 파라미터 ={}", styleNo);
-		ElectronicDocStyDTO vo = electronicDocStyService.selectByStyleNo(styleNo);
+	@Transactional
+	@PutMapping("/approve")
+	@ApiOperation(value = "결재 승인")
+	public ResponseEntity<String> approve(@RequestBody Map<String, Object> map) {
+		int electronicNo = (int) map.get("electronicNo");
+		int empNo = (int) map.get("empNo");
 
-		model.addAttribute("vo", vo);
-		return "electronic/documentDetail";
-
-	}
-
-	// 문서 선택시 트리뷰로 보여주기
-	@ResponseBody
-	@RequestMapping("/list")
-	public List<OriVo> selectDocFol() {
-		logger.info("문서 트리뷰 보여주기");
-
-		List<OriVo> olist = new ArrayList<>();
-
-		List<ElectronicDocFolDTO> elist = electronicDocFolService.selectAll();
-		List<ElectronicDocStyDTO> slist = electronicDocStyService.selectAll();
-		logger.info("elist ={}", elist);
-
-		for (int i = 0; i < elist.size(); i++) {
-
-			ElectronicDocFolDTO eleDocFolVo = elist.get(i);
-			OriVo orivo = new OriVo();
-
-			orivo.setId(Integer.toString(eleDocFolVo.getFolderNo()));
-			orivo.setText(eleDocFolVo.getFolderName());
-			orivo.setParent("#");
-			olist.add(orivo);
-		}
-
-		for (int i = 0; i < slist.size(); i++) {
-
-			ElectronicDocStyDTO eleDocStyVo = slist.get(i);
-			OriVo orivo = new OriVo();
-
-			orivo.setId(Integer.toString(eleDocStyVo.getStyleNo()));
-			orivo.setText(eleDocStyVo.getStyleName());
-			orivo.setParent(Integer.toString(eleDocStyVo.getFolderNo()));
-			olist.add(orivo);
-		}
-
-		return olist;
-
-	}
-
-	// 유저번호로 유저 도장 정보 가져오기
-	@ResponseBody
-	@RequestMapping("/selectstamp")
-	public Map<String, Object> selectstamp(@RequestParam String userNo) {
-		logger.info("유저 번호로 유저 도장 정보 조회 파라미터 userNo = {}", userNo);
-
-		Map<String, Object> stampInfo = empService.selectstamp(userNo);
-		// {"EMP_NAME":"관명","STAMP_NAME":"아이유1.jpg","POSITION_NO":2,"STAMP_NO":1,"EMP_NO":101,"POSITION_NAME":"부장"}
-		return stampInfo;
-
-	}
-
-	// 유저번호배열로 유저 도장 조회하기
-	@ResponseBody
-	@RequestMapping("/selectstampList")
-	public List<Map<String, Object>> selectstampList(@RequestParam(value = "empNo[]") List<String> empNo) {
-
+		logger.info("electronic={}", electronicNo);
 		logger.info("empNo={}", empNo);
+		int res = electronicAppService.updateAppLine(electronicNo, empNo, 1);
 
-		List<Map<String, Object>> listmap = new ArrayList<Map<String, Object>>();
-		for (int i = 0; i < empNo.size(); i++) {
-			String emp = empNo.get(i);
-			logger.info("emp = {}", emp);
-			Map<String, Object> stampInfo = empService.selectstampList(emp);
-			listmap.add(stampInfo);
-			logger.info("추가 하는중 allInfo={}", listmap);
+		if (res == 0) {
+			res = electronicService.updateEleComplete(electronicNo, 1);
+			if (res == 0) {
+				throw new CustomException(CustomErrorCode.ELECTRINIC_UPDATE_FAIL, "해당 문서 수정 실패");
+			}
 		}
-		;
-		logger.info("allInfo={}", listmap);
 
-		return listmap;
+		return new ResponseEntity<String>(ConstUtil.SUCCESS, HttpStatus.OK);
 
 	}
 
-	// 기안서 파일 삭제
-	@RequestMapping("/deleteFile")
-	@ResponseBody
-	public int deleteFile(@RequestParam int electronicNo) {
-		logger.info("파일 삭제 처리 파리미터 electronicNo ={}", electronicNo);
+	@Transactional
+	@PutMapping("/denied")
+	@ApiOperation(value = "결재 반려")
+	public ResponseEntity<String> denied(@RequestBody Map<String, Object> map) {
+		int electronicNo = (int) map.get("electronicNo");
+		int empNo = (int) map.get("empNo");
 
-		int cnt = electronicFileService.deleteFile(electronicNo);
+		logger.info("electronic={}", electronicNo);
+		logger.info("empNo={}", empNo);
+		int res = electronicAppService.updateAppLine(electronicNo, empNo, 2);
+		res = electronicService.updateEleComplete(electronicNo, 2);
+		if (res == 0) {
+			throw new CustomException(CustomErrorCode.ELECTRINIC_UPDATE_FAIL, "해당 문서 수정 실패");
+		}
 
-		return cnt;
+		return new ResponseEntity<String>(ConstUtil.SUCCESS, HttpStatus.OK);
+
 	}
+
+//
+//	// 결재 승인
+//	@RequestMapping("/AcceptUpdateAppLine")
+//	public String AcceptUpdateAppLine(@ModelAttribute ElectronicDTO vo, @RequestParam String no, Model model) {
+//		logger.info("리스트 번호 no ={}", no);
+//		logger.info("AppLine 업데이트 파라미터 electronicVo={}", vo);
+//
+//		int cnt = 0;
+//		ElectronicAppLineDTO evo = null;
+//		int uptodate = 0;
+//		if (electronicAppService.selectAppLineCheck(vo) != null) {
+//			evo = electronicAppService.selectAppLineCheck(vo); // 내 앞사람이 승인을 했는지 안했는지
+//			logger.info("앞 라인 승인 여부 evo.getApprovalLineCompleteFlag()={}", evo.getApprovalLineCompleteFlag());
+//
+//			if (evo.getApprovalLineCompleteFlag().equals("1")) { // 앞사람이 승인을 했으면
+//				cnt = electronicAppService.AcceptUpdateAppLine(vo);
+//				uptodate = electronicService.upToDate(vo.getElectronicNo());
+//			} // 앞사람이 승인을 안했으면
+//
+//		} else { // 앞사람이 없으면
+//			cnt = electronicAppService.AcceptUpdateAppLine(vo);
+//			uptodate = electronicService.upToDate(vo.getElectronicNo());
+//		}
+//		logger.info("날짜 최시화 uptodate={}", uptodate);
+//
+//		List<ElectronicAppLineDTO> list = electronicAppService.selectByElectronicNo(vo.getElectronicNo());
+//
+//		int sum = 0;
+//		for (int i = 0; i < list.size(); i++) {
+//			ElectronicAppLineDTO getList = list.get(i);
+//			if (getList.getApprovalLineCompleteFlag().equals("1")) {
+//				sum += 1;
+//			}
+//		}
+//		int completeCnt = 0;
+//		if (sum == list.size()) {
+//			completeCnt = electronicService.updateEleComplete(vo.getElectronicNo());
+//		}
+//
+//		String url = "/electronic/electronicList?no=" + no, msg = "승인 순서가 아닙니다.";
+//		if (cnt > 0) {
+//			msg = "승인 완료";
+//		}
+//		if (completeCnt > 0) {
+//			msg = "결재 최종 완료";
+//		}
+//
+//		model.addAttribute("msg", msg);
+//		model.addAttribute("url", url);
+//		model.addAttribute("navNo", 1);
+//
+//		return "common/message";
+//	}
+//
+
+//
+//
+
+//
+//	// 결재 반려 이메일 전송 및 반려 처리
+//	@PostMapping("/electronicReturnEmail")
+//	public String eleReturnEmail_post(@ModelAttribute EmailDTO emailVo,@RequestParam int ElectronicNo, Model model) {
+//		logger.info("결재 반려 이메일 파라미터 emailVo={}", emailVo);
+//		logger.info("결재 반려하기 파라미터 electronicNo ={}", ElectronicNo);
+//		
+//		int cnt = emailService.sendEmail(emailVo);
+//		
+//		String url = "/electronic/electronicReturnEmail", msg="반려 메일 전송 실패";
+//		if(cnt>0) {
+//			msg = "반려 메일 전송 완료";
+//		}
+//		
+//		int cnt2 = electronicService.updateEleReturn(ElectronicNo);
+//		
+//		if (cnt2 > 0) {
+//			msg = "결재 반려 완료/ 메일 전송 완료";
+//		}
+//		
+//		model.addAttribute("url", url);
+//		model.addAttribute("msg", msg);
+//		
+//		return "common/message";
+//	}
+//
+//	// 결재자 삭제
+//	@RequestMapping("deleteAppLine")
+//	@ResponseBody
+//	public int deleteAppLine(@RequestParam(value = "empNo[]") String[] empNo, @RequestParam String electronicNo) {
+//		ElectronicAppLineDTO vo = new ElectronicAppLineDTO();
+//		vo.setElectronicNo(Integer.parseInt(electronicNo));
+//
+//		int result = 0;
+//		for (int i = 0; i < empNo.length; i++) {
+//			logger.info("AppLine 삭제 파라미터 empNo={}", empNo[i]);
+//			vo.setEmpNo(Integer.parseInt(empNo[i]));
+//			int cnt = electronicAppService.deleteAppLine(vo);
+//			logger.info("AppLine 삭제 파라미터 vo ={}", vo);
+//			if (cnt > 0) {
+//				logger.info("삭제 완료");
+//				result = cnt;
+//			}
+//		}
+//		return result;
+//	}
+//
+//	// 수신자 삭제
+//	@RequestMapping("deleteReLine")
+//	@ResponseBody
+//	public int deleteReLine(@RequestParam(value = "empNo[]") String[] empNo, @RequestParam String electronicNo) {
+//		ElectronicReLineDTO vo = new ElectronicReLineDTO();
+//		vo.setElectronicNo(Integer.parseInt(electronicNo));
+//
+//		int result = 0;
+//		for (int i = 0; i < empNo.length; i++) {
+//			logger.info("ReLine 삭제 파라미터 empNo={}", empNo[i]);
+//			vo.setEmpNo(Integer.parseInt(empNo[i]));
+//			int cnt = electronicReService.deleteReLine(vo);
+//			logger.info("ReLine 삭제 파라미터 vo ={}", vo);
+//			if (cnt > 0) {
+//				logger.info("삭제 완료");
+//				result = cnt;
+//			}
+//		}
+//		return result;
+//	}
+//
+//	// 수신 승인
+//	@RequestMapping("/AcceptUpdateReLine")
+//	public String AcceptUpdateReLine(@ModelAttribute ElectronicDTO vo, @RequestParam String no, Model model) {
+//		logger.info("리스트 번호 no ={}", no);
+//		logger.info("ReLine 업데이트 파라미터 electronicVo={}", vo);
+//		int cnt = electronicReService.AcceptUpdateReLine(vo);
+//		String url = "/electronic/electronicList?no=" + no, msg = "수신 실패";
+//		if (cnt > 0) {
+//			msg = "수신 확인";
+//		}
+//
+//		model.addAttribute("msg", msg);
+//		model.addAttribute("url", url);
+//		model.addAttribute("navNo", 1);
+//
+//		return "common/message";
+//	}
+//
+
+//	// 기안서 파일 삭제
+//	@RequestMapping("/deleteFile")
+//	@ResponseBody
+//	public int deleteFile(@RequestParam int electronicNo) {
+//		logger.info("파일 삭제 처리 파리미터 electronicNo ={}", electronicNo);
+//
+//		int cnt = electronicFileService.deleteFile(electronicNo);
+//
+//		return cnt;
+//	}
 
 }

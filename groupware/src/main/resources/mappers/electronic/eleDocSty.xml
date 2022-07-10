@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.it.groupware.electronicDocSty.model.ElectronicDocStyDAO">
+
+	<!-- 모든 양식 목록 -->
+	<select id="selectAll" resultType="ElectronicDocStyDTO">
+		select * from docsty
+	</select>
+	
+	<!-- 스타일 번호에 맞는 양식 -->
+	<select id="selectByStyleNo" parameterType="int" resultType="ElectronicDocStyDTO">
+		select * from docsty 
+		where style_No = #{styleNo}
+	</select>
+	
+	<!-- 폴더 번호에 속하는 양식 목록 -->
+	<select id="selectByFolderNo" parameterType="int" resultType="ElectronicDocStyDTO">
+		select * from docsty 
+		where FOLDER_NO = #{folderNo}
+	</select>
+	
+	<!-- 입력 받은 폴더 번호, 번호 안의 순서가 동일한 양식의 번호 -->
+	<select id="selectByFolderStyleNo" parameterType="int" resultType="int">
+		select STYLE_NO from docsty 
+		where FOLDER_STYLE_NO = #{folderStyleNo} and FOLDER_NO=#{folderNo}
+	</select>
+</mapper>

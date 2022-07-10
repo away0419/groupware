@@ -154,7 +154,6 @@ public class BookingController {
 		int TotalRecord = bookingService.selectCntAllByAppFlag();
 		PaginationInfo pagingInfo = new PaginationInfo();
 		pagingInfo.setCurrentPage(currentPage);
-		pagingInfo.setBlockSize(ConstUtil.BLOCK_SIZE_ANN);
 		pagingInfo.setRecordCountPerPage(ConstUtil.RECORD_COUNT_ANN);
 		pagingInfo.setTotalRecord(TotalRecord);
 		map.put("pagingInfo", pagingInfo);

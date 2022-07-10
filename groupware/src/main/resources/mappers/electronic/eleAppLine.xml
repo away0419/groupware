@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper
+	namespace="com.it.groupware.electronicAppLine.model.ElectronicAppLineDAO">
+	
+	<delete id="deleteAppLine" parameterType="ElectronicAppLineDTO">
+		delete APPLINE
+		where ELECTRONIC_NO = ${electronicNo} and EMP_NO = ${empNo}
+	</delete>
+	
+	<select id="selectAppLineCheck" parameterType="ElectronicDTO" resultType="ElectronicAppLineDTO">
+		select * from APPLINE
+		where APPROVAL_LINE_ORDER = (select APPROVAL_LINE_ORDER from appline
+		where ELECTRONIC_NO = #{electronicNo} and EMP_NO = ${empNo})-1 and ELECTRONIC_NO = #{electronicNo} 
+	
+	</select>
+
+	<!-- 결재 라인 추가 -->
+	<insert id="insertAppLine" parameterType="ElectronicAppLineDTO">
+		<selectKey keyProperty="approvalLineNo" resultType="int"
+			order="BEFORE">
+			select APPLINE_SEQ.nextval from dual
+		</selectKey>
+
+		insert into APPLINE
+		values (#{approvalLineNo}, #{electronicNo}, #{empNo},
+		#{approvalLineCompleteFlag}, #{approvalLineOrder})
+	</insert>
+	
+	<!-- 해당 문서 번호의 결재 라인 찾기 -->
+	<select id="selectByElectronicNo" parameterType="int" resultType="ElectronicAppLineDTO">
+		select * from APPLINE
+		where ELECTRONIC_NO = #{electronicNo}
+		order by APPROVAL_LINE_ORDER
+	</select>
+	
+	<!-- 결재 라인 수정 -->
+	<update id="updateAppLine" parameterType="int">
+			update APPLINE
+			set APPROVAL_LINE_COMPLETE_FLAG = #{approvalLineCompleteFlag}
+			where ELECTRONIC_NO = #{electronicNo} AND EMP_NO = #{empNo}
+	</update>
+	
+	<!-- 해당 번호의 결재 라인중 진행 상태가 해당 상태인 목록 -->
+	<select id="selectByComFalg" parameterType="int" resultType="ElectronicAppLineDTO">
+		select * from APPLINE
+		where ELECTRONIC_NO = #{electronicNo} and APPROVAL_LINE_COMPLETE_FLAG = #{approvalLineCompleteFlag}
+		order by APPROVAL_LINE_ORDER
+	</select>
+	
+	<!-- 현재 문서에서 수신자가 맞는지 확인 -->
+	<select id="selectForCheckExist" parameterType="int" resultType="int">
+		select count(*) from APPLINE
+		where ELECTRONIC_NO = #{electronicNo} and EMP_NO = #{empNo} 
+		and APPROVAL_LINE_COMPLETE_FLAG = #{approvalLineCompleteFlag}
+	</select>
+	
+	
+</mapper>
+
+
+

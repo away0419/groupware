@@ -72,11 +72,10 @@ public class AddBookController {
 		/* 페이징 처리 */
 		PaginationInfo pagingInfo = new PaginationInfo();
 		pagingInfo.setCurrentPage(searchVo.getCurrentPage());
-		pagingInfo.setBlockSize(ConstUtil.BLOCK_SIZE);
 		pagingInfo.setRecordCountPerPage(ConstUtil.RECORD_COUNT);
 
 		searchVo.setFirstRecordIndex(pagingInfo.getFirstRecordIndex());
-		searchVo.setRecordCountPerPage(ConstUtil.RECORD_COUNT);
+		searchVo.setPerPage(ConstUtil.RECORD_COUNT);
 		searchVo.setEmpNo(Integer.toString(empNo));
 		logger.info("페이지 번호 관련 셋팅 후 serachVo={}", searchVo);
 
@@ -147,11 +146,10 @@ public class AddBookController {
 		/* 페이징 처리 */
 		PaginationInfo pagingInfo = new PaginationInfo();
 		pagingInfo.setCurrentPage(searchVo.getCurrentPage());
-		pagingInfo.setBlockSize(ConstUtil.BLOCK_SIZE);
 		pagingInfo.setRecordCountPerPage(ConstUtil.RECORD_COUNT);
 
 		searchVo.setFirstRecordIndex(pagingInfo.getFirstRecordIndex());
-		searchVo.setRecordCountPerPage(ConstUtil.RECORD_COUNT);
+		searchVo.setPerPage(ConstUtil.RECORD_COUNT);
 		searchVo.setAddressFolderNo(addressFolderNo);
 		logger.info("페이지 번호 관련 셋팅 후 serachVo={}", searchVo);
 

@@ -17,8 +17,18 @@ public class ElectronicDocStyServiceImpl implements ElectronicDocStyService {
 	}
 
 	@Override
-	public ElectronicDocStyDTO selectByStyleNo(String styleNo) {
+	public ElectronicDocStyDTO selectByStyleNo(int styleNo) {
 		return eleDao.selectByStyleNo(styleNo);
+	}
+	
+	@Override
+	public List<ElectronicDocStyDTO> selectByFolderNo(int styleNo) {
+		return eleDao.selectByFolderNo(styleNo);
+	}
+
+	@Override
+	public int selectByFolderStyleNo(int folderNo, int folderStyleNo) {
+		return eleDao.selectByFolderStyleNo(folderNo, folderStyleNo);
 	}
 
 }

@@ -89,10 +89,9 @@ public class EmailController {
 		//페이징처리
 		PaginationInfo pagingInfo = new PaginationInfo();
 		pagingInfo.setCurrentPage(searchVo.getCurrentPage());
-		pagingInfo.setBlockSize(ConstUtil.EMAIL_BLOCK_SIZE);
 		pagingInfo.setRecordCountPerPage(ConstUtil.EMAIL_RECORD_COUNT);
 		
-		searchVo.setRecordCountPerPage(ConstUtil.EMAIL_RECORD_COUNT);
+		searchVo.setPerPage(ConstUtil.EMAIL_RECORD_COUNT);
 		searchVo.setFirstRecordIndex(pagingInfo.getFirstRecordIndex());
 		logger.info("이메일페이징, searchVo={}",searchVo);
 		

@@ -7,9 +7,9 @@ import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
-import com.it.groupware.controller.AdminPageInterceptor;
-import com.it.groupware.controller.LoginInterceptor;
-import com.it.groupware.controller.LoginToLoginInterceptor;
+import com.it.groupware.commoncontroller.AdminPageInterceptor;
+import com.it.groupware.commoncontroller.LoginInterceptor;
+import com.it.groupware.commoncontroller.LoginToLoginInterceptor;
 
 
 @Configuration

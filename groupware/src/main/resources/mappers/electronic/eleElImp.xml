@@ -1,0 +1,460 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.it.groupware.electronic.model.ElectronicDAO">
+
+	
+	
+	
+
+	
+
+	<select id="selectByEmpNo" resultType="ElectronicDTO" parameterType="int">
+		select a.* from 
+		elimp a join appline b
+		on a.electronic_no = b.electronic_no
+		where b.emp_no = #{empNo}
+	</select>
+
+	<select id="TotalSelectListByEmpNo1" parameterType="searchVo" resultType="int">
+			select count(*) from apEleList
+			where EMP_NO_AP = #{empNo} and APPROVAL_LINE_COMPLETE_FLAG = 0 and ELECTRONIC_DRAFT = 0 and ELECTRONIC_COMPLET_FLAG !=2
+			<include refid="searchWhere"></include>
+			order by ELECTRONIC_NO DESC
+	</select>
+	
+	<select id="TotalSelectListByEmpNo2" parameterType="searchVo" resultType="int">
+			select count(*) from reEleList
+			where EMP_NO_RE = #{empNo} and ELECTRONIC_DRAFT = 0
+			<include refid="searchWhere"></include>
+			order by ELECTRONIC_NO DESC
+	</select>
+	
+	<select id="TotalSelectListByEmpNo3" parameterType="searchVo" resultType="int">
+			select count(*) from apEleList
+			where EMP_NO_AP = #{empNo} and APPROVAL_LINE_COMPLETE_FLAG = 1 and ELECTRONIC_DRAFT = 0
+			<include refid="searchWhere"></include>
+			order by ELECTRONIC_NO DESC
+	</select>
+	
+	<select id="TotalSelectListByEmpNo4" parameterType="searchVo" resultType="int">
+			select count(*) from elimp
+			where EMP_NO = ${empNo} and ELECTRONIC_DRAFT = 0 and ELECTRONIC_COMPLET_FLAG = 0
+			<include refid="searchWhere"></include>
+			order by ELECTRONIC_NO DESC
+	</select>
+	
+	<select id="TotalSelectListByEmpNo5" parameterType="searchVo" resultType="int">
+			select count(*) from elimp
+			where EMP_NO = ${empNo} and ELECTRONIC_DRAFT = 1
+			<include refid="searchWhere"></include>
+			order by ELECTRONIC_NO DESC
+	</select>
+	
+	<select id="TotalSelectListByEmpNo6" parameterType="searchVo" resultType="int">
+			select count(*) from elimp
+			where ELECTRONIC_COMPLET_FLAG = 1 and ELECTRONIC_DRAFT = 0
+			<include refid="searchWhere"></include>
+			order by ELECTRONIC_NO DESC
+	</select>
+	
+	<select id="TotalSelectListByEmpNo7" parameterType="searchVo" resultType="int">
+			select count(*) from elimp
+			where ELECTRONIC_COMPLET_FLAG = 2
+			<include refid="searchWhere"></include>
+			order by ELECTRONIC_NO DESC
+	</select>
+	
+	
+	<select id="selectListByEmpNo1" parameterType="searchVo" resultType="map">
+	
+		SELECT *
+		FROM
+		(
+			SELECT rownum as RNUM,A.*
+			from
+			(
+				select * from apEleList
+				where EMP_NO_AP = #{empNo} and APPROVAL_LINE_COMPLETE_FLAG = 0 and ELECTRONIC_DRAFT = 0 and ELECTRONIC_COMPLET_FLAG !=2
+				<include refid="searchWhere"></include>
+			    order by ELECTRONIC_DATE DESC, ELECTRONIC_NO DESC
+				
+			)A
+		)
+		<![CDATA[
+		where RNUM > #{firstRecordIndex} 
+		and RNUM <= #{firstRecordIndex} + #{recordCountPerPage}
+		]]>
+		
+	</select>
+	
+	<select id="selectListByEmpNo3" parameterType="searchVo" resultType="map">
+	
+		SELECT *
+		FROM
+		(
+			SELECT rownum as RNUM,A.*
+			from
+			(
+				select * from apEleList
+				where EMP_NO_AP = #{empNo} and APPROVAL_LINE_COMPLETE_FLAG = 1 and ELECTRONIC_DRAFT = 0 and ELECTRONIC_COMPLET_FLAG != 1 
+				<include refid="searchWhere"></include>
+				order by ELECTRONIC_DATE DESC, ELECTRONIC_NO DESC
+				
+			)A
+		)
+		<![CDATA[
+		where RNUM > #{firstRecordIndex} 
+		and RNUM <= #{firstRecordIndex} + #{recordCountPerPage}
+		]]>
+		
+	</select>
+	
+	<select id="selectListByEmpNo6" parameterType="searchVo" resultType="map">
+		
+		SELECT *
+		FROM
+		(
+			SELECT rownum as RNUM,A.*
+			from
+			(
+				select * from elimp
+				where ELECTRONIC_COMPLET_FLAG = 1 and ELECTRONIC_DRAFT = 0
+				<include refid="searchWhere"></include>
+				order by ELECTRONIC_DATE DESC, ELECTRONIC_NO DESC
+				
+			)A
+		)
+		<![CDATA[
+		where RNUM > #{firstRecordIndex} 
+		and RNUM <= #{firstRecordIndex} + #{recordCountPerPage}
+		]]>
+	</select>
+	
+	<select id="selectListByEmpNo7" parameterType="searchVo" resultType="map">
+		
+		SELECT *
+		FROM
+		(
+			SELECT rownum as RNUM,A.*
+			from
+			(
+				select * from elimp
+				where ELECTRONIC_COMPLET_FLAG = 2
+				<include refid="searchWhere"></include>
+				order by ELECTRONIC_DATE DESC, ELECTRONIC_NO DESC
+				
+			)A
+		)
+		<![CDATA[
+		where RNUM > #{firstRecordIndex} 
+		and RNUM <= #{firstRecordIndex} + #{recordCountPerPage}
+		]]>
+	</select>
+	
+	<select id="selectListByEmpNo2" parameterType="searchVo" resultType="map">
+	
+		SELECT *
+		FROM
+		(
+			SELECT rownum as RNUM,A.*
+			from
+			(
+				select * from reEleList
+				where EMP_NO_RE = #{empNo} and ELECTRONIC_DRAFT = 0
+				<include refid="searchWhere"></include>
+				order by ELECTRONIC_DATE DESC, ELECTRONIC_NO DESC
+				
+			)A
+		)
+		<![CDATA[
+		where RNUM > #{firstRecordIndex} 
+		and RNUM <= #{firstRecordIndex} + #{recordCountPerPage}
+		]]>
+	</select>
+	
+	<select id="selectListByEmpNo4" parameterType="searchVo" resultType="map">
+	
+		SELECT *
+		FROM
+		(
+			SELECT rownum as RNUM,A.*
+			from
+			(
+				select * from elimp
+				where EMP_NO = ${empNo} and ELECTRONIC_DRAFT = 0 and ELECTRONIC_COMPLET_FLAG = 0
+				<include refid="searchWhere"></include>
+				order by ELECTRONIC_DATE DESC, ELECTRONIC_NO DESC
+				
+			)A
+		)
+		<![CDATA[
+		where RNUM > #{firstRecordIndex} 
+		and RNUM <= #{firstRecordIndex} + #{recordCountPerPage}
+		]]>
+	</select>
+	
+	<select id="selectListByEmpNo5" parameterType="searchVo" resultType="map">
+		
+		SELECT *
+		FROM
+		(
+			SELECT rownum as RNUM,A.*
+			from
+			(
+				select * from elimp
+				where EMP_NO = ${empNo} and ELECTRONIC_DRAFT = 1
+				<include refid="searchWhere"></include>
+				order by ELECTRONIC_DATE DESC, ELECTRONIC_NO DESC
+				
+			)A
+		)
+		<![CDATA[
+		where RNUM > #{firstRecordIndex} 
+		and RNUM <= #{firstRecordIndex} + #{recordCountPerPage}
+		]]>
+	</select>
+	
+	
+	
+	<update id="updateEleReturn" parameterType="int">
+		update elimp
+		set ELECTRONIC_COMPLET_FLAG = '2', ELECTRONIC_DATE = CURRENT_DATE
+		where ELECTRONIC_NO = #{electronicNo}
+	</update>
+	
+	
+	
+	<select id="selectTopSty" parameterType="int" resultType="map">
+		select STYLE_NO, ELECTRONIC_TITLE from 
+		(
+		    select * from ELIMP
+		    where  EMP_NO = #{empNo}
+		    order by ELECTRONIC_NO desc
+		)
+		<![CDATA[where rownum<6]]>
+		
+	</select>
+	
+	<update id="upToDate" parameterType="int">
+		update elimp
+		set ELECTRONIC_DATE = CURRENT_DATE
+		where ELECTRONIC_NO = #{electronicNo}
+	</update>
+	
+	<select id="selectUpdateToday" parameterType="int" resultType="ElectronicDTO">
+		select A.* from 
+		<![CDATA[
+		(
+			select * from apEleList
+			where EMP_NO_AP = #{empNo} and ELECTRONIC_COMPLET_FLAG = 0 and APPROVAL_LINE_COMPLETE_FLAG = 0 and ELECTRONIC_DRAFT = 0 and ELECTRONIC_DATE < CURRENT_DATE +1 and ELECTRONIC_DATE > CURRENT_DATE -1
+		    order by ELECTRONIC_DATE DESC, ELECTRONIC_NO DESC
+		)A
+		where rownum < 6]]>
+	</select>
+	
+	
+	<!-- =================================새로 만듬========================================================= -->
+	
+	<!-- 검색조건 sql -->
+	<sql id="searchWhere">
+		<if test="searchVo.searchCondition !=null and (searchVo.searchKeyword!=null and searchVo.searchKeyword!='')">
+			AND ${searchVo.searchCondition} like '%' || #{searchVo.searchKeyword} || '%'
+		</if>
+	</sql>
+	
+	<!-- 보낸 결재 목록 가져오기 -->
+	<select id="selectSendList" parameterType="map" resultType="ElectronicDTO">
+		select * from 
+		(select
+		ROW_NUMBER() OVER (ORDER BY 
+		<choose>
+			<when test="searchVo.sortBy != null">
+				CONCAT('a',${searchVo.sortBy})
+				<if test="searchVo.sortDesc">DESC</if>
+			</when>
+			<otherwise>
+				a.ELECTRONIC_DATE DESC
+			</otherwise>
+		</choose>
+		) as NUMS,a.* from ELIMP a
+		where EMP_NO= #{searchVo.empNo} 
+		<choose>
+			<when test="electronicDraft ==0">
+				and ELECTRONIC_COMPLET_FLAG= #{electronicCompletFlag}
+				and ELECTRONIC_DRAFT = 0
+			</when>
+			<otherwise>
+				and ELECTRONIC_DRAFT = 1
+			</otherwise>
+		</choose>
+		<include refid="searchWhere"></include>
+		)
+		<![CDATA[where NUMS>#{searchVo.firstRecordIndex} and NUMS<=#{searchVo.firstRecordIndex}+#{searchVo.perPage}]]>
+	</select>
+	
+	<!-- 보낸 결재 목록 총 갯수 -->
+	<select id="selectSendListCnt" parameterType="map" resultType="int">
+		select count(*) from ELIMP
+		where EMP_NO= #{searchVo.empNo} 
+		<choose>
+			<when test="electronicDraft ==0">
+				and ELECTRONIC_COMPLET_FLAG= #{electronicCompletFlag}
+				and ELECTRONIC_DRAFT = 0
+			</when>
+			<otherwise>
+				and ELECTRONIC_DRAFT = 1
+			</otherwise>
+		</choose>
+		<include refid="searchWhere"></include>
+	</select>
+	
+	<!-- 받은 결재 목록 가져오기 -->
+	<select id="selectReceiveList" parameterType="map" resultType="ElectronicDTO">
+		select * from
+		(select ROW_NUMBER() OVER (ORDER BY 
+		<choose>
+			<when test="searchVo.sortBy != null">
+				CONCAT('a',${searchVo.sortBy})
+				<if test="searchVo.sortDesc">DESC</if>
+			</when>
+			<otherwise>
+				a.ELECTRONIC_DATE DESC
+			</otherwise>
+		</choose>
+		) as NUMS, a.* from ELIMP a
+		where a.ELECTRONIC_NO in (select ELECTRONIC_NO from APPLINE
+		where EMP_NO=#{searchVo.empNo} and 
+			(APPROVAL_LINE_COMPLETE_FLAG=#{approvalLineCompleteFlag}
+			<if test="electronicCompletFlag==2">
+			or APPROVAL_LINE_COMPLETE_FLAG=0 
+			</if>
+			))
+		<if test="electronicCompletFlag==1 || electronicCompletFlag==2">
+			and ELECTRONIC_COMPLET_FLAG=#{electronicCompletFlag} 
+		</if>
+		<include refid="searchWhere"></include>
+		)
+		<![CDATA[where NUMS>#{searchVo.firstRecordIndex} and NUMS<=#{searchVo.firstRecordIndex}+#{searchVo.perPage}]]>
+	</select>
+	
+	<!-- 받은 결재 목록 총 갯수 -->
+	<select id="selectReceiveListCnt" parameterType="map" resultType="int">
+		select count(*) from ELIMP
+		where ELECTRONIC_NO in (select ELECTRONIC_NO from APPLINE
+		where EMP_NO=#{searchVo.empNo} and 
+			(APPROVAL_LINE_COMPLETE_FLAG=#{approvalLineCompleteFlag}
+			<if test="electronicCompletFlag==2">
+			or APPROVAL_LINE_COMPLETE_FLAG=0 
+			</if>
+			))
+		<if test="electronicCompletFlag==1 || electronicCompletFlag==2">
+			and ELECTRONIC_COMPLET_FLAG=#{electronicCompletFlag} 
+		</if>
+		<include refid="searchWhere"></include>
+	</select>
+	
+	<!-- 받은 수신용 목록 가져오기 -->
+	<select id="selectReadList" parameterType="map" resultType="ElectronicDTO">
+		select * from
+		(select ROW_NUMBER() OVER (ORDER BY 
+		<choose>
+			<when test="searchVo.sortBy != null">
+				CONCAT('a',${searchVo.sortBy})
+				<if test="searchVo.sortDesc">DESC</if>
+			</when>
+			<otherwise>
+				a.ELECTRONIC_DATE DESC
+			</otherwise>
+		</choose>
+		) as NUMS, a.* from ELIMP a
+		where a.ELECTRONIC_NO in (select ELECTRONIC_NO from RELINE
+		where EMP_NO=#{searchVo.empNo})
+		<include refid="searchWhere"></include>
+		)
+		<![CDATA[where NUMS>#{searchVo.firstRecordIndex} and NUMS<=#{searchVo.firstRecordIndex}+#{searchVo.perPage}]]>
+	</select>
+	
+	<!-- 받은 수신용 목록 총 갯수 -->
+	<select id="selectReadListCnt" parameterType="map" resultType="int">
+		select count(*) from ELIMP
+		where ELECTRONIC_NO in (select ELECTRONIC_NO from RELINE
+		where EMP_NO=#{searchVo.empNo})
+		<include refid="searchWhere"></include>
+	</select>
+	
+	<!-- 최근 사용 양식 목록 -->
+	<select id="selectRecentlyList" parameterType="int" resultType="ElectronicRecentlyDTO">
+		select * from
+		(select * from recently
+		where EMP_no = #{empNo}
+		order by USE_DATE DESC)
+		<![CDATA[where ROWNUM<=15]]>
+	</select>
+	
+	<!-- 결재 등록 -->
+	<insert id="insertEle" parameterType="ElectronicDTO">
+		<selectKey keyProperty="electronicNo" resultType="int"
+			order="BEFORE">
+			select ELIMP_SEQ.nextval from dual
+		</selectKey>
+		insert into ELIMP
+		values (#{electronicNo} , CURRENT_TIMESTAMP,
+		#{electronicTitle}, #{electronicContent}, #{electronicFileFlag},
+		default,
+		#{electronicEmergencyFlag}, #{empNo},
+		#{styleNo}, #{electronicDraft}, #{empName}, #{styleName})
+	</insert>
+	
+	<!-- 최근 등록한 결재 번호 -->
+	<select id="selectMaxEleNo" parameterType="int" resultType="int">
+		select MAX(electronic_no) from elimp
+		where emp_no = #{empNo}
+	</select>
+	
+	<!-- 최근 사용 양식 추가 -->
+	<insert id="insertRecently" parameterType="ElectronicRecentlyDTO">
+	<selectKey keyProperty="recentlyNo" resultType="int" order="BEFORE">
+		select RECENTLY_SEQ.nextval from dual
+	</selectKey>
+		insert into RECENTLY values(#{recentlyNo},#{styleName},#{empNo}, #{styleNo}, CURRENT_TIMESTAMP)
+	</insert>
+	
+	<!-- 결재 업데이트 -->
+	<update id="updateEle" parameterType="ElectronicDTO">
+		update ELIMP
+		set ELECTRONIC_DATE = CURRENT_TIMESTAMP, ELECTRONIC_TITLE = #{electronicTitle}, 
+		ELECTRONIC_CONTENT= #{electronicContent}, ELECTRONIC_FILE_FLAG = #{electronicFileFlag}, 
+		ELECTRONIC_EMERGENCY_FLAG= #{electronicEmergencyFlag}, 
+		ELECTRONIC_DRAFT= #{electronicDraft}
+		where ELECTRONIC_NO = #{electronicNo}
+	</update>
+	
+	<!-- 해당 번호의 문서 찾기 -->
+	<select id="selectByElectronicNo" parameterType="int"
+		resultType="ElectronicDTO">
+		select * from ELIMP
+		where electronic_no= #{electronicNo}
+	</select>
+	
+	<!-- 해당 번호의 문서 진행 상태 수정 -->
+	<update id="updateEleComplete" parameterType="int">
+		update ELIMP
+		set ELECTRONIC_COMPLET_FLAG = #{electronicCompletFlag}
+		where ELECTRONIC_NO = #{electronicNo}
+	</update>
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+
+

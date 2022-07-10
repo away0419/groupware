@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.it.groupware.emp.model.EmpDAO">
+	<!-- 검색조건 -->	
+	<sql id="searchWhere">
+	   <if test="searchKeyword!=null and searchKeyword!=''">
+		 and ${searchCondition}  like '%' || #{searchKeyword} || '%'
+	   </if>
+	</sql>
+	<!-- 사원등록 -->
+	<insert id="insertEmp" parameterType="empDTO">
+		<selectKey keyProperty="empNo" resultType="int"
+			order="BEFORE">
+			select EMP_SEQ.nextval from dual
+		</selectKey>
+		insert into emp
+		values(#{empNo}, #{empName}, #{empPwd}, #{empTel},
+		#{empEmail},#{empZipcode},#{empAddress},
+		#{empAddressdetail},#{empRegdate},null,#{empPhoto},#{empSalary},#{empAccount},#{empAdminLev},
+		#{empBirth},#{departmentNo},#{positionNo})
+	</insert>
+	
+	
+	
+	<resultMap type="hashmap" id="ageEmp">
+		<result property="name" column="AGE" jdbcType="NUMERIC" javaType="int"/>
+		<result property="y" column="PER" jdbcType="NUMERIC" javaType="float"/>
+		<result property="drilldown" column="AGE" jdbcType="NUMERIC" javaType="int"/>
+	</resultMap>
+	
+	<resultMap type="hashmap" id="ageEmp2">
+		<result property="age" column="AGE" jdbcType="NUMERIC" javaType="int"/>
+		<result property="per" column="PER" jdbcType="NUMERIC" javaType="float"/>
+		<result property="ageGroup" column="AGEGROUP" jdbcType="NUMERIC" javaType="int"/>
+	</resultMap>
+	
+	<resultMap type="hashmap" id="joinLeave">
+		<result property="reg" column="REG" jdbcType="NUMERIC" javaType="int"/>
+		<result property="res" column="RES" jdbcType="NUMERIC" javaType="int"/>
+	</resultMap>
+	
+	<select id="selectAge" resultMap="ageEmp2">
+		select age,ROUND(RATIO_TO_REPORT(COUNT(*)) OVER(),3)*100 as per, floor(age/10)*10 as ageGroup
+		from( select (to_char(CURRENT_DATE, 'YYYY') - to_char(emp_birth,'YYYY')) as age from emp ) o
+		group by age
+		order by age
+	</select> 
+	
+	<select id="selectAgeGrop" resultMap="ageEmp">
+		select age, ROUND(RATIO_TO_REPORT(COUNT(*)) OVER(),3)*100 AS per
+		from( select floor((to_char(CURRENT_DATE, 'YYYY') - to_char(emp_birth,'YYYY')) / 10) * 10 as age from emp ) o
+		group by age
+		order by age
+	</select> 
+	
+	<select id="selectJoinLeave" resultMap="joinLeave">
+		select count(EMP_REGDATE) as reg, count(EMP_RESDATE ) as res from emp
+		where EMP_REGDATE between TRUNC(CURRENT_DATE,'MM') and ADD_MONTHS( TRUNC(CURRENT_DATE,'MM'), 1)
+		OR EMP_RESDATE between TRUNC(CURRENT_DATE,'MM') and ADD_MONTHS( TRUNC(CURRENT_DATE,'MM'), 1)
+	</select> 
+	
+	
+	
+	
+	
+	<!-- 사원번호로 존재여부 -->
+	<select id="selectCountByEmpNo" parameterType="int" resultType="int">
+		select count(*) from empView
+		where emp_no= #{empNo}
+	</select>
+
+	<!-- 사원정보 전체선택 -->
+	<select id="selectAllEmpList" parameterType="searchVo" resultType="empDTO">
+		select *
+		from
+		(
+		    select rownum as RNUM, A.*
+		    from
+		    (
+		       select * from empView
+		       where EMP_RESDATE is null
+			   <include refid="searchWhere"/>
+		       order by emp_no desc
+		    )A
+		)
+		<![CDATA[
+		where RNUM > #{firstRecordIndex} 
+		and RNUM <= #{firstRecordIndex} + #{recordCountPerPage}
+		]]>
+	</select>
+	
+	<!-- 사원정보 전체선택 2 -->
+	<select id="selectAllEmp"  resultType="empDTO">
+		select * from empview
+		where EMP_RESDATE is null
+		order by EMP_NO		
+	</select>
+	
+	<select id="selectAllEmpForEle" resultType="empDTO">
+		select * from emp
+	</select>
+	
+	<select id="selectTotalEmpCount" resultType="int">
+		select count(*) from emp
+		where EMP_RESDATE is null
+	</select>
+	
+	<select id="selectTotalAdmin" resultType="int">
+		select count(*) from emp
+		where EMP_ADMIN_LEV = 1 AND EMP_RESDATE is null
+	</select>
+	
+	<!-- 사원 전체 수 -->
+	<select id="selectTotalEmp" parameterType="searchVo" resultType="int">
+		select count(*) from empView
+		where EMP_RESDATE is null
+		<include refid="searchWhere"/>
+	</select>
+	
+	<!-- 사원정보수정 -->
+	<update id="updateEmp" parameterType="empDTO">
+		update emp
+		set emp_tel=#{empTel}, emp_Email=#{empEmail}, emp_photo=#{empPhoto}, emp_zipcode=#{empZipcode}, 
+		    emp_address=#{empAddress}, emp_addressDetail=#{empAddressdetail}, emp_salary=#{empSalary}, emp_account=#{empAccount},
+		    emp_Admin_Lev=#{empAdminLev}, department_no=#{departmentNo}, position_No=#{positionNo}
+		where EMP_NO= #{empNo}
+	</update>
+	
+	<!-- 전자결재관련 -->
+	<select id="selectstamp" resultType="map" parameterType="String">
+		select * from selectstamp
+		where emp_no = #{userNo}
+	</select>
+	
+	<select id="selectstampList" resultType="map" parameterType="String">
+		select * from selectstamp
+		where emp_no = #{empNo}
+	</select>
+	
+	<update id="deleteEmp" parameterType="int">
+		update emp
+		set emp_resdate = CURRENT_DATE
+		where emp_no = #{empNo}
+	</update>
+	
+	<select id="checkEmail" parameterType="int" resultType="String">
+		select emp_email from emp
+		where emp_no = #{empNo}
+	</select>
+	
+	
+	
+	<select id="selectSearchNum" parameterType="int" resultType="empDTO" >
+		select * from emp
+		where emp_no like  #{searchNum} || '%'
+	</select>
+	
+	<!-- 새로만듬================================================================ -->
+	
+	<!-- 비밀번호 찾기-->
+	<select id="selectPwd" parameterType="int" resultType="String">
+		select emp_pwd from emp
+		where emp_no=#{empNo} and EMP_RESDATE IS NULL
+	</select> 
+	
+	<!-- 사원번호로 사원 찾기 -->
+	<select id="selectByEmpNo" parameterType="int" resultType="empDTO">
+		select * from empView
+		where emp_no= #{empNo}
+	</select>
+	
+	<!-- 임시 비밀번호로 변경 -->
+	<update id="updateTempPwd" parameterType="empDTO">
+		update emp
+		set emp_pwd = #{empPwd}
+		where emp_no = #{empNo}
+	</update>
+	
+	<!-- 부서번호로 사원 찾기 -->
+	<select id="selectByDepartmentNo" parameterType="int" resultType="empDTO">
+		select * from empView
+		where DEPARTMENT_NO= #{departmentNo}
+	</select>
+	
+</mapper>
+
+
+
+
+
+
+
+
+
+

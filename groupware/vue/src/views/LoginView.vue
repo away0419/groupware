@@ -1,6 +1,6 @@
 <template>
-  <div>
-    <div class="px-1 px-md-5 px-lg-1 px-xl-5 py-5 mx-auto">
+  <div id="login">
+    <div class="px-1 px-md-5 px-lg-1 py-5 mx-auto">
       <div class="card card0 border-0">
         <div class="row d-flex">
           <div class="col-lg-6">
@@ -22,18 +22,19 @@
                 <div class="row mb-4 px-3"></div>
                 <div class="row px-3 mb-4"></div>
                 <div class="row px-3 user-box">
-                  <label class="mb-1">사원번호</label>
+                  <label class="mb-1 user-label">사원번호</label>
                   <input
                     class="mb-4 textGroup"
                     type="text"
                     name="empNo"
                     id="empNo"
                     v-model="emp.empNo"
+                    @keyup.enter="empLogin"
                     placeholder="Enter employee number"
                   />
                 </div>
                 <div class="row px-3 user-box">
-                  <label class="mb-1">비밀번호</label>
+                  <label class="mb-1 user-label">비밀번호</label>
                   <input
                     class="mb-4 textGroup"
                     type="password"
@@ -41,9 +42,10 @@
                     v-model="emp.empPwd"
                     id="empPwd"
                     placeholder="Enter password"
+                    @keyup.enter="empLogin"
                   />
                 </div>
-                <div class="row px-3 mb-4" style="width: 800px">
+                <div class="row px-3 mb-4 find-div">
                   <input
                     type="checkbox"
                     id="switch1"
@@ -56,22 +58,23 @@
                     <span class="on">on</span>
                     <span class="off">off</span>
                   </label>
-                  <span style="margin-top: 3px">&nbsp;저장</span>
-                  <span
-                    style="font-size: 0.8em; margin-top: 6px; margin-left: 05%"
+                  <span style="margin-top: 3px; margin-right: 5px"
+                    >&nbsp;저장</span
+                  >
+                  <span style="font-size: 0.8em; margin-top: 6px"
                     >비밀번호를 잃어버리셨나요?
                   </span>
 
                   <div class="svg-wrapper">
                     <svg
-                      height="60"
-                      width="200"
+                      height="30"
+                      width="90"
                       xmlns="http://www.w3.org/2000/svg"
                     >
                       <rect class="shape" style="height: 30px; width: 90px" />
                     </svg>
-                    <div class="findPwd">
-                      <a href="#" id="findPwd">find</a>
+                    <div class="findPwd" v-b-modal.modal-1>
+                      <p id="findPwd">find</p>
                     </div>
                   </div>
                 </div>
@@ -99,10 +102,12 @@
         </div>
       </div>
     </div>
+    <find-pwd-modal></find-pwd-modal>
   </div>
 </template>
 <script>
 import { mapState, mapActions } from "vuex";
+import FindPwdModal from "@/components/modal/FindPwdModal";
 
 const empStore = "empStore";
 
@@ -116,6 +121,9 @@ export default {
       },
       isRememberId: false,
     };
+  },
+  components: {
+    FindPwdModal,
   },
   computed: {
     ...mapState(empStore, ["isLogin", "isLoginError"]),
@@ -139,32 +147,37 @@ export default {
       await this.login(this.emp);
       if (this.isLogin) {
         if (this.isRememberId) {
-          console.log(this.emp.empNo);
+          // console.log(this.emp.empNo);
           this.$cookies.set("isRememberId", this.emp.empNo);
         }
         this.$router.push({ name: "home" });
+      } else {
+        alert("아이디 또는 비밀번호가 다릅니다.");
       }
     },
   },
 };
 </script>
-
 <style>
 @charset "UTF-8";
-
-body {
+</style>
+<style scoped>
+#login {
   color: #000;
   overflow-x: hidden;
-  margin: 0 auto;
-  width: 80%;
   height: 100%;
   background-color: #b0bec5;
   background-repeat: no-repeat;
 }
-
+.user-label {
+  padding-right: 10px;
+  padding-top: 12px;
+}
 .card0 {
   box-shadow: 0px 4px 8px 0px #757575;
   border-radius: 0px;
+  margin: 0 auto;
+  width: 78%;
 }
 
 .card2 {
@@ -239,9 +252,10 @@ button:focus {
   outline-width: 0;
 }
 
-a {
+.findPwd > p {
   color: inherit;
   cursor: pointer;
+  padding-left: 10px;
   text-decoration: none !important;
 }
 
@@ -281,10 +295,6 @@ a {
 }
 .buttonGroup {
   margin-left: 115px;
-}
-
-.modalButton {
-  margin-left: 30px;
 }
 
 input[type="checkbox"] {
@@ -381,12 +391,10 @@ input[type="checkbox"] {
 }
 
 .findPwd {
-  text-align: center;
   font-size: 0.9em;
   letter-spacing: 8px;
-  line-height: 32px;
   position: relative;
-  top: -61px;
+  top: -27px;
 }
 
 @keyframes draw {

@@ -1,5 +1,8 @@
 package com.it.groupware.breakTheme.model;
 
-public interface BreakThemeService {
+import java.util.List;
 
+
+public interface BreakThemeService {
+	List<BreakThemeDTO> selectAll(); // 휴가 종류 전체 조회
 }

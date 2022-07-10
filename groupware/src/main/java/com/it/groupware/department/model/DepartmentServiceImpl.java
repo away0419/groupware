@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 public class DepartmentServiceImpl implements DepartmentService{
 	private final DepartmentDAO departmentDao;
 
+	//모든 부서 목록
 	@Override
 	public List<DepartmentDTO> selectAllDepartment() {
 		return departmentDao.selectAllDepartment();

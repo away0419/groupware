@@ -114,11 +114,10 @@ public class BoardController {
 		/* 페이징 처리 */
 		PaginationInfo pagingInfo = new PaginationInfo();
 	    pagingInfo.setCurrentPage(searchVo.getCurrentPage());
-	    pagingInfo.setBlockSize(ConstUtil.BLOCK_SIZE);
 	    pagingInfo.setRecordCountPerPage(ConstUtil.RECORD_COUNT);
 	      
 	    searchVo.setFirstRecordIndex(pagingInfo.getFirstRecordIndex());
-	    searchVo.setRecordCountPerPage(ConstUtil.RECORD_COUNT);
+	    searchVo.setPerPage(ConstUtil.RECORD_COUNT);
 	    searchVo.setBoardFolderNo(boardFolderNo);
 	    logger.info("페이지 번호 관련 셋팅 후 serachVo={}", searchVo);
 	      

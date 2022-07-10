@@ -62,12 +62,32 @@ public interface ConstUtil {
 	String ELECTRONIC_UPLOAD_PATH_REAL = "/var/lib/tomcat9/webapps/lylj/resources/electonic_stamp_upfile";
 	
 	//전자결재 도장 업로드 경로
-	String ELECTRONIC_STAMP_UPLOAD_PATH = "electronic_upFile";
+//	String ELECTRONIC_STAMP_UPLOAD_PATH = "electronic_upFile";
 	//String ELECTRONIC_STAMPUP_LOAD_PATH_REAL = "E:\\[FINAL]\\JLYL_ws\\lylj\\src\\main\\webapp\\resources\\electonic_stamp_upfile";
-	String ELECTRONIC_STAMPUP_LOAD_PATH_REAL = "/var/lib/tomcat9/webapps/lylj/resources/electonic_stamp_upfile";
+//	String ELECTRONIC_STAMPUP_LOAD_PATH_REAL = "/var/lib/tomcat9/webapps/lylj/resources/electonic_stamp_upfile";
 
 	//이메일 파일 업로드 경로
 	String EMAIL_UPLOAD_PATH = "email_upfile";
 	String EMAIL_UPLOAD_PATH_REAL = "/var/lib/tomcat9/webapps/lylj/resources/email_upfile";
 	//String EMAIL_UPLOAD_PATH_REAL = "E:\\gicording\\project\\JLYL_ws\\lylj\\src\\main\\webapp\\resources\\email_upfile";
+
+	
+	//추가----------------------------------------------------------------------------------------------------------
+	int ELECTRONIC_RECEIVE_WAIT =0;
+	int ELECTRONIC_RECEIVE_PLAN =1;
+	int ELECTRONIC_RECEIVE_APPROVE =2;
+	int ELECTRONIC_RECEIVE_RETURN =3;
+	int ELECTRONIC_RECEIVE_READ =4;
+	int ELECTRONIC_SEND_WAIT=5;
+	int ELECTRONIC_SEND_APPROVE =6;
+	int ELECTRONIC_SEND_RETURN =7;
+	
+	
+	String ELECTRONIC_STAMPUP_PATH= "/resources/electonic_stamp/";
+	String ELECTRONIC_FILE_PATH= "/resources/electronic_file/";
+	String EMP_PHOTO_PATH= "/resources/emp_photo/";
+	
+	
+	
+	
 }

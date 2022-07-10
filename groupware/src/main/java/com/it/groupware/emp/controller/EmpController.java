@@ -1,7 +1,9 @@
 package com.it.groupware.emp.controller;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -12,11 +14,14 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.servlet.ServletContext;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
+import org.apache.commons.collections4.map.HashedMap;
+import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -27,6 +32,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -38,13 +44,19 @@ import com.it.groupware.attendDay.model.AttendDayService;
 import com.it.groupware.booking.model.BookingDTO;
 import com.it.groupware.booking.model.BookingService;
 import com.it.groupware.common.ConstUtil;
+import com.it.groupware.common.CustomErrorCode;
+import com.it.groupware.common.CustomException;
 import com.it.groupware.common.FileUploadUtil;
+import com.it.groupware.common.ImageTranseform;
 import com.it.groupware.common.PaginationInfo;
 import com.it.groupware.common.SearchVO;
 import com.it.groupware.department.model.DepartmentDTO;
 import com.it.groupware.department.model.DepartmentService;
 import com.it.groupware.electronic.model.ElectronicDTO;
 import com.it.groupware.electronic.model.ElectronicService;
+import com.it.groupware.electronicAppStamp.model.ElectronicAppStampDTO;
+import com.it.groupware.electronicDocFol.model.ElectronicDocFolDTO;
+import com.it.groupware.electronicDocSty.model.ElectronicDocStyDTO;
 import com.it.groupware.email.model.EmailDTO;
 import com.it.groupware.email.model.EmailService;
 import com.it.groupware.emp.model.EmpDTO;
@@ -53,17 +65,20 @@ import com.it.groupware.position.model.PositionDTO;
 import com.it.groupware.position.model.PositionService;
 import com.it.groupware.schedule.model.ScheduleService;
 
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
 import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/emp")
+@Api(tags = "회원")
 public class EmpController {
-	
 	private static final Logger logger = LoggerFactory.getLogger(EmpController.class);
-	private final PositionService positionService;
-	private final DepartmentService departmentService;
+	private final ServletContext servletContext;
 	private final EmpService empService;
+	private final DepartmentService departmentService;
+	private final PositionService positionService;
 	private final FileUploadUtil fileUploadUtil;
 	private final PasswordEncoder passwordEncoder;
 	private final EmailService emailService;
@@ -71,28 +86,123 @@ public class EmpController {
 	private final BookingService bookingService;
 	private final ScheduleService scheduleService;
 	private final AttendDayService attendDayService;
-	
-	
-//	//사원등록페이지
-//	@GetMapping("/empWrite")
-//	public String empWrite(Model model) {
-//		//1
-//		logger.info("사원등록페이지");
-//		
-//		//2 직급, 부서명 가지고 오기
-//		List<PositionDTO> positionList = positionService.selectAllPosition();
-//		List<DepartmentDTO> departmentList = departmentService.selectAllDepartment();
-//		logger.info("positionList={}, departmentList={}", positionList, departmentList);
-//		
-//		//3 모델에 저장, 뷰페이지 리턴
-//		model.addAttribute("positionList", positionList);
-//		model.addAttribute("departmentList", departmentList);
-//		model.addAttribute("navNo", 8);
-//		
-//		return "emp/empWrite";
-//		
-//	}
-	
+	private final ImageTranseform itf;
+
+	// 로그인처리
+	@PostMapping("/login")
+	@ApiOperation(value = "로그인")
+	public ResponseEntity<Map<String, Object>> login_post(@RequestBody EmpDTO empDto) {
+		int empNo = empDto.getEmpNo();
+		String empPwd = empDto.getEmpPwd();
+		Map<String, Object> data = empService.login(empNo, empPwd);
+		if (!(boolean) data.get("result")) {
+			throw new CustomException(CustomErrorCode.UserNotFound, "로그인 에러");
+		}
+		return new ResponseEntity<Map<String, Object>>(data, HttpStatus.OK);
+	}
+
+	// 임시 비밀번호 발급
+	@PutMapping("/findPwd")
+	@ApiOperation(value = "임시 비밀번호 발급")
+	public ResponseEntity<String> sendRandomPwd(@RequestBody EmpDTO empDto) {
+		boolean res = empService.issuePwd(empDto);
+		String str = ConstUtil.FAIL;
+		if (res) {
+			str = ConstUtil.SUCCESS;
+			return new ResponseEntity<String>(str, HttpStatus.OK);
+		} else {
+			return new ResponseEntity<String>(str, HttpStatus.OK);
+		}
+	}
+
+	// 부서 and 사원 가져오기
+	@GetMapping("/selectEmpTree")
+	@ApiOperation(value = "부서 + 사원 트리 가져오기")
+	public ResponseEntity<Map<String, Object>> selectFormTree(String kind, @RequestParam(required = false, defaultValue = "0") int empNo) {
+		int num = 0;
+		if (kind.equals("ori")) {
+			num = 0;
+		} else if (kind.equals("select")) {
+			num = 1;
+		}
+		Map<String, Object> data = new HashedMap<String, Object>();
+		List<Map<String, Object>> treeData = new ArrayList<>();
+		List<DepartmentDTO> departmentList = departmentService.selectAllDepartment();
+		if (departmentList != null) {
+			String url = servletContext.getRealPath(ConstUtil.EMP_PHOTO_PATH);
+
+			for (int i = 0; i < departmentList.size(); i++) {
+				Map<String, Object> tree = new HashedMap<String, Object>();
+				List<Map<String, Object>> children = new ArrayList<>();
+				DepartmentDTO departmentDto = departmentList.get(i);
+				int departmentNo = departmentDto.getDepartmentNo();
+				List<EmpDTO> empList = empService.selectByDepartmentNo(departmentNo);
+
+				for (int j = 0; j < empList.size(); j++) {
+					Map<String, Object> child = new HashMap<>();
+					EmpDTO empDto = empList.get(j);
+					if (num == 0) {
+						byte[] imageByteArray = itf.transImage(url + empDto.getEmpPhoto());
+						child.put("name", empDto.getEmpName());
+						child.put("departmentNo", departmentNo);
+						child.put("departmentName", empDto.getDepartmentName());
+						child.put("empPhoto", imageByteArray);
+						child.put("empNo", empDto.getEmpNo());
+						child.put("empEmail", empDto.getEmpEmail());
+						child.put("empTel", empDto.getEmpTel());
+						children.add(child);
+					} else if (num == 1) {
+						if (empDto.getEmpNo() != empNo) {
+							child.put("id", empDto.getEmpNo());
+							child.put("label", empDto.getEmpName());
+							children.add(child);
+						}
+					}
+				}
+				if (num == 0) {
+					tree.put("name", departmentDto.getDepartmentName());
+					tree.put("children", children);
+					treeData.add(tree);
+				} else if (num == 1) {
+					if (!children.isEmpty()) {
+						tree.put("id", departmentDto.getDepartmentName());
+						tree.put("label", departmentDto.getDepartmentName());
+						tree.put("children", children);
+						treeData.add(tree);
+					}
+				}
+			}
+
+			data.put("treeData", treeData);
+			data.put("res", ConstUtil.SUCCESS);
+		} else {
+			data.put("res", ConstUtil.FAIL);
+		}
+		return new ResponseEntity<>(data, HttpStatus.OK);
+	}
+
+	// 사원 사진 가져오기
+	@GetMapping("/selectPhoto")
+	@ApiOperation(value = "사원 사진 파일 가져오기")
+	public ResponseEntity<Map<String, Object>> seletPhoto(@RequestParam int empNo) {
+		Map<String, Object> data = new HashedMap<String, Object>();
+		EmpDTO empDto = empService.selectByEmpNo(empNo);
+
+		if (empDto == null) {
+			data.put("result", ConstUtil.FAIL);
+			return new ResponseEntity<>(data, HttpStatus.OK);
+		} else {
+			String url = servletContext.getRealPath(ConstUtil.EMP_PHOTO_PATH);
+			url += empDto.getEmpPhoto();
+			byte[] imageByteArray = itf.transImage(url);
+			data.put("image", imageByteArray);
+			data.put("url", url);
+			data.put("result", ConstUtil.SUCCESS);
+			return new ResponseEntity<>(data, HttpStatus.OK);
+		}
+
+	}
+
 //	//사원등록처리
 //	@PostMapping("/empWrite")
 //	public String empWrite_post(@ModelAttribute EmpDTO vo, HttpServletRequest request, Model model) {
@@ -131,32 +241,7 @@ public class EmpController {
 //		
 //		return "common/message";
 //	}
-	
-	
-//	/* 비밀번호 체크 */
-//	@ResponseBody
-//	@RequestMapping("/pwdCheck")
-//	public boolean pwdCheck(@RequestParam String empPwd ) {
-//		logger.info("비밀번호 chk, empPwd={}", empPwd);
-//		
-//		//2.
-//		//반환값 셋팅
-//		boolean chkPwd = false;
-//		
-//		//정규식 최소 8자, 최소 하나의 문자 및 하나의 숫자 포함
-//		String validPwd = "^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d]{8,}$";
-//		
-//		Pattern pt_symbol= Pattern.compile(validPwd);
-//		Matcher mt_symbol= pt_symbol.matcher(empPwd);
-//		
-//		if(mt_symbol.find()) {
-//			chkPwd=true;
-//		}
-//		
-//		//3. 리턴
-//		return chkPwd;
-//	}
-//
+
 //	/* 사원정보 상세보기 */
 //	@GetMapping("/empInfo")
 //	public String empinfo(@RequestParam(defaultValue = "0")int empNo, HttpSession session ,Model model) {
@@ -220,71 +305,7 @@ public class EmpController {
 //		return "emp/empInfo";
 //	}
 //	
-//	/* 사원정보 수정페이지보기 */
-//	@GetMapping("/empEdit")
-//	public String empEdit(@RequestParam(defaultValue = "0") int empNo, HttpSession session ,Model model) {
-//		logger.info("사원정보수정페이지, empNo={}", empNo);
-//		int adminLev = (int)session.getAttribute("empAdminLev");
-//		
-//		//출퇴근 시간 체크 by 준경
-//		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-//		Date now = new Date();
-//		logger.info("메인페이지");
-//		int empNo2 = Integer.parseInt((String)session.getAttribute("empNo"));
-//		
-//		EmpDTO empDTO = empService.selectByEmpNo(empNo2);
-//		List<ElectronicDTO> elist = eleService.selectUpdateToday(empNo2);
-//		List<BookingDTO> bookingList2 = bookingService.selectAllBookingViewByEmpNo(empNo2);
-//		List<BookingDTO> bookingList = new ArrayList<BookingDTO>();
-//		Date startDate;
-//		Date endDate;
-//		for(int i=0; i<bookingList2.size(); i++) {
-//			try {
-//				startDate = sdf.parse(bookingList2.get(i).getBookingStart());
-//				endDate = sdf.parse(bookingList2.get(i).getBookingEnd());
-//				if(startDate.getTime()<now.getTime() && now.getTime()<endDate.getTime()) {
-//					bookingList.add(bookingList2.get(i));
-//				}
-//			} catch (ParseException e) {
-//			}
-//		}
-//		Date today = new Date();
-//		today.setHours(0);
-//		today.setMinutes(0);
-//		today.setSeconds(0);
-//		logger.info("strToday ={}",today);
-//		HashMap<String, Object> map = new HashMap<String, Object>();
-//		map.put("empNo", empNo2);
-//		map.put("nowDate", today);
-//		int todayScheduleCnt= scheduleService.selectCntScheduleByToday(map);
-//		AttendDayDTO atdVO = new AttendDayDTO();
-//		atdVO.setEmpNo(empNo2);
-//		atdVO.setAttendanceDayRegdate(today);
-//		AttendDayDTO attendDayDTO = attendDayService.selectAttendDayByRegdate(atdVO);
-//		
-//		logger.info("elist={}", elist);
-//
-//		//안읽은 메일 숫자
-//		int mailCount = emailService.totalCountByReadDateMain(empNo2);
-//		logger.info("index 안읽은 메일, mailCount={}",mailCount);
-//		
-//		//수정할 EMP 정보 선택
-//		EmpDTO empVo = empService.selectByEmpNo(empNo);
-//		logger.info("사원정보수정페이지, adminLev={}", adminLev);
-//		
-//		//모델 저장, 뷰페이지 리턴 => input태그에 정보 띄어주기 위함
-//		model.addAttribute("elist", elist);
-//		model.addAttribute("empNo", empNo2);
-//		model.addAttribute("bookingList", bookingList);
-//		model.addAttribute("todayScheduleCnt", todayScheduleCnt);
-//		model.addAttribute("attendDayVO", attendDayDTO);
-//		model.addAttribute("empVO", empDTO);
-//		model.addAttribute("mailCount", mailCount);
-//		model.addAttribute("empVo", empVo);
-//		
-//		return "emp/empEdit";
-//	}
-//	
+
 //	/* 사원정보 수정처리 */
 //	@PostMapping("/empEdit")
 //	public String empEdit_post(@ModelAttribute EmpDTO empVo, @RequestParam String mEmpNo, @RequestParam String loginEmpNo
@@ -453,18 +474,5 @@ public class EmpController {
 //		List<EmpDTO> list = empService.selectSearchNum(searchNo);
 //		return list;
 //	}
-	
-	/* 로그인처리 */
-	@PostMapping("/login")
-	public ResponseEntity<Map<String,Object>> login_post(@RequestBody EmpDTO empDto, 
-			@RequestParam(required = false) String chkSave) {
-	    int empNo = empDto.getEmpNo();
-	    String empPwd = empDto.getEmpPwd();
-	    Map<String,Object> data = empService.login(empNo, empPwd);
-	    	
-	    return new ResponseEntity<Map<String,Object>>(data, HttpStatus.OK);
-	}
+
 }
-
-
-

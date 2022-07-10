@@ -82,7 +82,6 @@ public class AttendDayController {
 		int TotalRecord = attendDayService.selecCnttAttendDayByFlag();
 		PaginationInfo pagingInfo = new PaginationInfo();
 		pagingInfo.setCurrentPage(currentPage);
-		pagingInfo.setBlockSize(ConstUtil.BLOCK_SIZE_ANN);
 		pagingInfo.setRecordCountPerPage(ConstUtil.RECORD_COUNT_ANN);
 		pagingInfo.setTotalRecord(TotalRecord);
 		map.put("pagingInfo", pagingInfo);
@@ -137,7 +136,6 @@ public class AttendDayController {
 		/* 페이징 정보 */
 		PaginationInfo pagingInfo = new PaginationInfo();
 		pagingInfo.setCurrentPage(currentPage);
-		pagingInfo.setBlockSize(ConstUtil.BLOCK_SIZE_ANN);
 		pagingInfo.setRecordCountPerPage(ConstUtil.RECORD_COUNT_ANN);
 		pagingInfo.setTotalRecord((int)data.get("TotalRecord"));
 		

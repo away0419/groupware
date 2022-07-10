@@ -8,7 +8,7 @@ export default {
     empInfo: null,
   },
   getters: {
-    empInfo: function (state) {
+    checkEmpInfo: function (state) {
       return state.empInfo;
     },
   },
@@ -20,6 +20,7 @@ export default {
           if (res.data.result) {
             commit("SET_IS_LOGIN", true);
             commit("SET_IS_LOGIN_ERROR", false);
+            commit("SET_EMP_INFO", res.data.emp);
           } else {
             commit("SET_IS_LOGIN", false);
             commit("SET_IS_LOGIN_ERROR", true);
@@ -27,6 +28,11 @@ export default {
         },
         () => {},
       );
+    },
+    logout({ commit }) {
+      commit("SET_EMP_INFO", null);
+      commit("SET_IS_LOGIN", false);
+      commit("SET_IS_LOGIN_ERROR", true);
     },
   },
   mutations: {

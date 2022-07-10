@@ -18,7 +18,6 @@ public interface EmpService {
 	int EMP=3;
 	
 	int insertEmp(EmpDTO vo);
-	Map<String, Object> login(int empNo, String empPwd);
 	EmpDTO selectByEmpNo(int empNo);
 	List<EmpDTO> selectAllEmp();
 	List<EmpDTO> selectAllEmpList(SearchVO searchVo);
@@ -36,10 +35,12 @@ public interface EmpService {
 	List<HashMap<String, Object>> selectAge();
 	List<HashMap<String, Object>> selectAgeGrop();
 	List<HashMap<String, Object>> selectJoinLeave();
-	
 	int selectTotalEmpCount();
 	int selectTotalAdmin();
 	
-	//비밀번호이메일발송
-	void sendEmail(EmpDTO vo);
+//	새로만듬----------------------------------------------------------
+	void sendEmail(EmpDTO vo); // 임시 비밀번호 이메일로 발송
+	Map<String, Object> login(int empNo, String empPwd); // 로그인 확인
+	boolean issuePwd(EmpDTO empDto); // 비밀번호 확인 후 임시 비밀번호 랜덤 변경
+	List<EmpDTO> selectByDepartmentNo(int departmentNo); // 해당 부서 번호를 가진 사원 목록
 }
